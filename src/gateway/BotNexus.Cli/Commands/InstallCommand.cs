@@ -37,8 +37,10 @@ internal sealed class InstallCommand
             var repo = context.ParseResult.GetValueForOption(repoOption)!;
             var build = context.ParseResult.GetValueForOption(buildOption);
             var verbose = context.ParseResult.GetValueForOption(verboseOption);
+            var target = context.ParseResult.GetValueForOption(targetOption);
             var targetPath = CliPaths.ResolveSource(source);
-            context.ExitCode = await ExecuteAsync(targetPath, repo, build, verbose, context.GetCancellationToken());
+            var homePath = CliPaths.ResolveTarget(target);
+            context.ExitCode = await ExecuteAsync(targetPath, homePath, repo, build, verbose, context.GetCancellationToken());
         });
 
         return command;
@@ -83,7 +85,16 @@ internal sealed class InstallCommand
     internal static string BuildCloneArguments(string repo, string targetPath)
         => $"clone --no-local -- \"{repo}\" \"{targetPath}\"";
 
-    internal static async Task<int> ExecuteAsync(string targetPath, string repo, bool build, bool verbose, CancellationToken cancellationToken)
+    internal static Task<int> ExecuteAsync(string targetPath, string repo, bool build, bool verbose, CancellationToken cancellationToken)
+        => ExecuteAsync(targetPath, CliPaths.ResolveTarget(null), repo, build, verbose, cancellationToken);
+
+    internal static async Task<int> ExecuteAsync(
+        string targetPath,
+        string homePath,
+        string repo,
+        bool build,
+        bool verbose,
+        CancellationToken cancellationToken)
     {
         var repoError = ValidateRepo(repo);
         if (repoError is not null)
@@ -109,6 +120,14 @@ internal sealed class InstallCommand
 
             AnsiConsole.MarkupLine($"[green]\u2713[/] Repository cloned to: [dim]{CliText.SafeDisplay(targetPath)}[/]");
         }
+
+        var synchronizedSkills = BundledSkillInstaller.Synchronize(
+            BundledSkillInstaller.ResolvePackagedSkillsRoot(),
+            homePath);
+        if (synchronizedSkills.Synchronized > 0)
+            AnsiConsole.MarkupLine($"[green]✓[/] Synchronized {synchronizedSkills.Synchronized} repository-owned workflow skill(s).");
+        foreach (var backup in synchronizedSkills.BackupPaths)
+            AnsiConsole.MarkupLine($"[yellow]⚠[/] Preserved the previous unmanaged skill at [dim]{CliText.SafeDisplay(backup)}[/].");
 
         if (build)
         {

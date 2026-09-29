@@ -1,0 +1,113 @@
+{
+  "_comment": "CANONICAL BotNexus label taxonomy. Single source of truth for Set-BotNexusLabel.ps1, SKILL.md and every agent brief. Six namespaces, each with a defined cardinality. Any label not listed here is not writable by the sanctioned script.",
+  "namespaces": {
+    "type": { "cardinality": "exactly-one", "description": "What kind of work this is. Maps 1:1 to conventional-commit type." },
+    "priority": { "cardinality": "at-most-one", "description": "How urgent." },
+    "area": { "cardinality": "zero-or-more", "description": "Which part of the system." },
+    "status": { "cardinality": "zero-or-more", "description": "Workflow state. Mutated by automation." },
+    "source": { "cardinality": "zero-or-more", "description": "Where the item came from." }
+  },
+  "labels": {
+    "type:bug":         { "color": "FF0422", "description": "Something broken. Conventional commit: fix" },
+    "type:feature":     { "color": "DDD1F2", "description": "New capability. Conventional commit: feat" },
+    "type:docs":        { "color": "0075CA", "description": "Documentation work. Conventional commit: docs" },
+    "type:refactor":    { "color": "C5DEF5", "description": "Behaviour-preserving restructuring. Conventional commit: refactor" },
+    "type:improvement": { "color": "A2EEEF", "description": "Behaviour-changing enhancement to something that already works. Conventional commit: perf" },
+    "type:chore":       { "color": "D4E5F7", "description": "Maintenance with no product behaviour change: deps, CI, build. Conventional commit: chore/ci/build" },
+    "type:test":        { "color": "BFD4F2", "description": "Test coverage work. Conventional commit: test" },
+    "type:spike":       { "color": "F2DDD4", "description": "Research/investigation - produces a plan, not code" },
+    "type:epic":        { "color": "CC4455", "description": "Parent issue that decomposes into sub-issues" },
+
+    "priority:critical": { "color": "B60205", "description": "Must fix immediately - production impact" },
+    "priority:high":     { "color": "FF0422", "description": "High priority - fix in current cycle" },
+    "priority:medium":   { "color": "FBCA04", "description": "Medium priority - fix in next cycle" },
+    "priority:low":      { "color": "0E8A16", "description": "Low priority - fix when convenient" },
+
+    "area:platform":  { "color": "1D76DB", "description": "Core platform / gateway / agent runtime" },
+    "area:channels":  { "color": "1D76DB", "description": "Channel adapters: Telegram, Service Bus, SignalR, webhook" },
+    "area:portal":    { "color": "E4E669", "description": "Blazor portal / web UI" },
+    "area:mobile":    { "color": "0075CA", "description": "Mobile UI" },
+    "area:security":  { "color": "D93F0B", "description": "Security vulnerability or hardening" },
+    "area:tooling":   { "color": "BFD4F2", "description": "Agent tool hardening and instruction improvements" },
+    "area:trailguide":{ "color": "5319E7", "description": "Trail Guide agent: onboarding, guidance and troubleshooting skills" },
+
+    "status:blocked":            { "color": "FBCA04", "description": "Blocked on external dependency or architectural prerequisite" },
+    "status:needs-jon-decision": { "color": "D93F0B", "description": "Blocked on Jon. Jon clears when answered; Farnsworth re-adds if more info needed." },
+    "status:in-progress":        { "color": "0E8A16", "description": "Claimed by an agent worker until publication releases the claim." },
+    "status:ready-for-agent":    { "color": "0E8A16", "description": "Explicitly admitted for agent delivery by a trusted actor." },
+
+    "source:opencode":        { "color": "6F42C1", "description": "Found by the OpenCode daily delta audit" },
+    "source:team-servicebus": { "color": "1D76DB", "description": "Filed from the team Service Bus channel; users describe their own platforms, not this one." },
+    "source:build-validation":{ "color": "1D76DB", "description": "Found by integration/daily build validation" },
+    "source:user-feedback":   { "color": "00E5FF", "description": "User feedback - high signal, needs attention" },
+    "source:dependabot":      { "color": "0366D6", "description": "Automated dependency update" }
+  },
+
+  "_migration_comment": "Legacy label -> canonical label. Applied by -Migrate. A null target means DELETE the label without replacement (dead taxonomy).",
+  "migrate": {
+    "bug": "type:bug",
+    "enhancement": "type:feature",
+    "documentation": "type:docs",
+    "refactor": "type:refactor",
+    "improvement": "type:improvement",
+    "tests": "type:test",
+    "testing": "type:test",
+    "security": "area:security",
+    "portal": "area:portal",
+    "mobile": "area:mobile",
+    "tooling": "area:tooling",
+    "[Platform]": "area:platform",
+    "[Channels]": "area:channels",
+    "blocked": "status:blocked",
+    "needs-jon-decision": "status:needs-jon-decision",
+    "agent:in-progress": "status:in-progress",
+    "opencode-source": "source:opencode",
+    "integration-test": "source:build-validation",
+    "feedback": "source:user-feedback",
+    "dependencies": "source:dependabot",
+    "priority:p0": "priority:critical",
+    "priority:p1": "priority:high",
+    "priority:p2": "priority:medium"
+  },
+
+  "_precedence_comment": "When an item carries more than one label from an exactly-one/at-most-one namespace (legacy double-tagging), the FIRST match in this list wins and the rest are removed. Deterministic so the same input always yields the same result. epic outranks everything because a parent issue is an epic first; bug outranks feature because a report of broken behaviour is a defect even when it implies new work.",
+  "precedence": {
+    "type": ["type:epic", "type:spike", "type:bug", "type:feature", "type:improvement", "type:refactor", "type:test", "type:docs", "type:chore"],
+    "priority": ["priority:critical", "priority:high", "priority:medium", "priority:low"]
+  },
+
+  "_dead_comment": "Labels to DELETE. Every one is either zero-usage or a retired workflow. Deleting a label removes it from historical issues, which is why each is listed explicitly rather than inferred.",
+  "dead": [
+    "squad", "squad:kif", "squad:nibbler", "squad:ralph", "squad:zapp",
+    "squad:farnsworth", "squad:leela", "squad:amy", "squad:bender", "squad:fry", "squad:hermes",
+    "go:yes", "go:no", "go:needs-research",
+    "release:v0.4.0", "release:v0.5.0", "release:v0.6.0", "release:v1.0.0", "release:backlog",
+    "farnsworth:Approved", "farnsworth:Blocked", "farnsworth:Pending",
+    "nexus-gateway-maintainer:Approved", "nexus-gateway-maintainer:Blocked", "nexus-gateway-maintainer:Pending",
+    "nexus-web-tester:Approved", "nexus-web-tester:Blocked", "nexus-web-tester:Pending",
+    "agentic-workflows", "automation", "automated-scan", "efficiency",
+    "duplicate", "invalid", "wontfix", "question", "good first issue", "help wanted",
+    "javascript"
+  ],
+
+  "_pr_rules_comment": "Mechanical PR labelling. type comes from the conventional-commit type in the PR title; area labels are unioned from path globs against the PR's changed files. No judgement, so the result is reproducible.",
+  "prTypeFromCommitType": {
+    "fix": "type:bug",
+    "feat": "type:feature",
+    "docs": "type:docs",
+    "refactor": "type:refactor",
+    "perf": "type:improvement",
+    "test": "type:test",
+    "chore": "type:chore",
+    "ci": "type:chore",
+    "build": "type:chore",
+    "style": "type:chore"
+  },
+  "prAreaFromPath": {
+    "area:portal":   ["**/*.razor", "**/*.scss", "**/wwwroot/**", "**/BlazorClient*/**"],
+    "area:mobile":   ["**/Mobile/**", "**/*.Mobile/**"],
+    "area:channels": ["**/BotNexus.Extensions.Channels*/**", "**/Gateway.Channels/**"],
+    "area:platform": ["src/gateway/**", "src/agent/**"],
+    "area:tooling":  ["**/BotNexus.Tools/**", "**/Extensions.ExecTool/**", "**/Extensions.ProcessTool/**"]
+  }
+}

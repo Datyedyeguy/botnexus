@@ -60,8 +60,10 @@ internal sealed class InitCommand
 
         if (File.Exists(configPath) && !force)
         {
+            var synchronized = BundledSkillInstaller.Synchronize(BundledSkillInstaller.ResolvePackagedSkillsRoot(), homePath);
             AnsiConsole.MarkupLine($"[yellow]⚠[/] Config already exists at [dim]{CliText.SafeDisplay(configPath)}[/]. Use [green]--force[/] to overwrite.");
             AnsiConsole.MarkupLine($"  Home: [dim]{CliText.SafeDisplay(homePath)}[/]");
+            ReportSkillSynchronization(synchronized);
             return 0;
         }
 
@@ -142,10 +144,21 @@ internal sealed class InitCommand
             AnsiConsole.MarkupLine("  [green]botnexus agent list[/]");
         }
 
+        var synchronizedSkills = BundledSkillInstaller.Synchronize(BundledSkillInstaller.ResolvePackagedSkillsRoot(), homePath);
+        ReportSkillSynchronization(synchronizedSkills);
+
         if (verbose)
             AnsiConsole.WriteLine(JsonSerializer.Serialize(defaultConfig, CreateWriteJsonOptions()));
 
         return 0;
+    }
+
+    private static void ReportSkillSynchronization(BundledSkillInstaller.BundledSkillSyncResult result)
+    {
+        if (result.Synchronized > 0)
+            AnsiConsole.MarkupLine($"[green]✓[/] Synchronized {result.Synchronized} repository-owned workflow skill(s).");
+        foreach (var backup in result.BackupPaths)
+            AnsiConsole.MarkupLine($"[yellow]⚠[/] Preserved the previous unmanaged skill at [dim]{CliText.SafeDisplay(backup)}[/].");
     }
 
     private static async Task WriteConfigAsync(PlatformConfig config, string configPath, CancellationToken cancellationToken)

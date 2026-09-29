@@ -17,6 +17,8 @@
     <!-- When the CLI invokes 'dotnet build' on the deployment traversal, it passes SkipCli=true
          so the CLI project skips rebuilding itself (the DLL is already loaded and locked). -->
     <IsExcludedFromBuild Condition="'$(SkipCli)' == 'true'">true</IsExcludedFromBuild>
+    <!-- Bundled PowerShell files are skill payloads, not legacy NuGet install hooks. -->
+    <NoWarn>$(NoWarn);NU5110;NU5111</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -59,6 +61,23 @@
     <EmbeddedResource Include="Resources\Prompts\*.prompt.*">
       <LogicalName>PromptSamples/%(Filename)%(Extension)</LogicalName>
     </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      BotNexus-specific workflow skills are repository-owned source. Ship the same files in the
+      dotnet-tool package so init can synchronize them into BOTNEXUS_HOME without a source checkout.
+    -->
+    <Content Include="..\..\..\skills\botnexus-backlog-grooming\**\*">
+      <Link>BundledSkills\botnexus-backlog-grooming\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <Content Include="..\..\..\skills\botnexus-pr-execution\**\*">
+      <Link>BundledSkills\botnexus-pr-execution\%(RecursiveDir)%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

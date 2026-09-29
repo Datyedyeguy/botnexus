@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "repository": "Sytone/botnexus",
+  "agentId": "farnsworth",
+  "admissionLabel": "status:ready-for-agent",
+  "trustedAdmissionActors": ["sytone", "agent-farnsworth[bot]", "app/agent-farnsworth"],
+  "blockedLabels": ["status:blocked", "status:needs-jon-decision", "status:in-progress"],
+  "excludedTypes": ["type:epic", "type:spike"],
+  "maximumActiveDeliveries": 8,
+  "maximumAdmissionsPerRun": 1,
+  "maximumOpenAgentPullRequests": 50,
+  "agentPullRequestAuthors": ["agent-farnsworth[bot]", "app/agent-farnsworth"],
+  "leaseMinutes": 1440,
+  "leaseDirectory": "C:/Users/jobullen/.botnexus/agents/farnsworth/workspace/state/botnexus-issue-delivery-leases",
+  "legacyLeasePath": "C:/Users/jobullen/.botnexus/agents/farnsworth/workspace/state/botnexus-issue-delivery-lease.json",
+  "conversationTitleTemplate": "{issue} - {shortName}",
+  "worktreeRoot": "Q:/repos/botnexus-wt",
+  "repositoryRoot": "Q:/repos/botnexus",
+  "baseBranch": "main"
+}

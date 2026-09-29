@@ -144,6 +144,14 @@ internal class UpdateCommand
         if (pullResult != 0)
             return pullResult;
 
+        var synchronizedSkills = BundledSkillInstaller.Synchronize(
+            BundledSkillInstaller.ResolveRepositorySkillsRoot(repoRoot),
+            home);
+        if (synchronizedSkills.Synchronized > 0)
+            AnsiConsole.MarkupLine($"[green]✓[/] Synchronized {synchronizedSkills.Synchronized} repository-owned workflow skill(s).");
+        foreach (var backup in synchronizedSkills.BackupPaths)
+            AnsiConsole.MarkupLine($"[yellow]⚠[/] Preserved the previous unmanaged skill at [dim]{CliText.SafeDisplay(backup)}[/].");
+
         // Step 1b: if the pull genuinely changed nothing, there is nothing to build and no
         // reason to bounce the gateway. Previously this case still stopped the gateway, ran a
         // full solution build and restarted - minutes of downtime to produce byte-identical
