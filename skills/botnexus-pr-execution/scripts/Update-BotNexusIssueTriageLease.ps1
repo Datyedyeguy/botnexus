@@ -1,5 +1,5 @@
 [CmdletBinding(SupportsShouldProcess)]
-param([ValidateSet('Acquire','Release')][string]$Action='Acquire',[string]$OwnerRunId=([guid]::NewGuid().ToString('N')),[string]$Nonce,[string]$LeasePath='C:/Users/jobullen/.botnexus/agents/farnsworth/workspace/state/botnexus-issue-triage-lease.json',[int]$LeaseMinutes=25,[datetimeoffset]$Now=[datetimeoffset]::UtcNow)
+param([ValidateSet('Acquire','Release')][string]$Action='Acquire',[string]$OwnerRunId=([guid]::NewGuid().ToString('N')),[string]$Nonce,[string]$LeasePath=(Join-Path $HOME '.botnexus/agents/farnsworth/workspace/state/botnexus-issue-triage-lease.json'),[int]$LeaseMinutes=25,[datetimeoffset]$Now=[datetimeoffset]::UtcNow)
 $ErrorActionPreference='Stop'
 if($Action -eq 'Acquire'){
   if(Test-Path $LeasePath){$old=Get-Content $LeasePath -Raw|ConvertFrom-Json;if([datetimeoffset]$old.expiresAt -gt $Now){[pscustomobject]@{status='blocked';code='triage-lease-active';lease=$old}|ConvertTo-Json -Depth 5 -Compress;return};if($PSCmdlet.ShouldProcess($LeasePath,'Remove expired triage lease')){Remove-Item $LeasePath -Force}}

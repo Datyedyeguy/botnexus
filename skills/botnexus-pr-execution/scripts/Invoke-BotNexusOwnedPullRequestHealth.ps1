@@ -2,7 +2,7 @@
 param(
   [string]$GatewayUrl='http://localhost:5005',
   [string]$AgentId='farnsworth',
-  [string]$StatePath='C:/Users/jobullen/.botnexus/agents/farnsworth/workspace/state/botnexus-owned-pr-health.json',
+  [string]$StatePath=(Join-Path $HOME '.botnexus/agents/farnsworth/workspace/state/botnexus-owned-pr-health.json'),
   [int]$RetryAfterMinutes=60,
   [ValidateRange(1,60)][int]$RequestTimeoutSeconds=10
 )

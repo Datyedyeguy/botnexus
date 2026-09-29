@@ -5,7 +5,7 @@
 .DESCRIPTION
   PR bodies, PR titles, commit messages and issue/PR comments routinely quote local
   paths because the explanation genuinely needs them -- the deployment repo
-  (C:\Users\<u>\botnexus) and the dev repo (Q:\repos\botnexus) are different things
+  (`$HOME\botnexus`) and the dev repo (Q:\repos\botnexus) are different things
   and a fix often turns on which one is meant. The paths are load-bearing prose; they
   just must not carry the operator's username or the machine's disk topology into a
   public repo.
@@ -15,10 +15,10 @@
   the PR shipper entirely -- can adopt the identical rules instead of re-deriving them.
 
   Rule ordering is longest-prefix-first and is load-bearing: without it
-  `C:\Users\jon\.botnexus` degrades to `~\.botnexus` under the bare-home rule and the
+  `$HOME\.botnexus` degrades to `~\.botnexus` under the bare-home rule and the
   intended `~/.botnexus` token is lost. Rules are case-insensitive (paths appear as
-  both `C:\` and `c:\`) and separator-agnostic (`C:/Users/...` shows up in JSON
-  snippets and stack traces).
+  with either drive-letter case) and separator-agnostic (forward-slash home paths
+  show up in JSON snippets and stack traces).
 
   The username segment is matched generically as [A-Za-z0-9_.-]+ rather than pinned to
   $env:USERNAME: pinning means the scrubber silently stops working the moment anyone

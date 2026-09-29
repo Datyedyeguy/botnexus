@@ -81,7 +81,8 @@ if($Scrub){
 # boundary before publishing auth or allowing any Git mutation; never echo child output.
 Remove-Item Env:GH_TOKEN,Env:BOTNEXUS_GIT_AUTH_HEADER -ErrorAction SilentlyContinue
 try {
-  $tokenRecords = @(pwsh -NoProfile -File 'C:\Users\jobullen\.botnexus\scripts\get-farnsworth-token.ps1' 2>$null)
+  $tokenScript = Join-Path $HOME '.botnexus/scripts/get-farnsworth-token.ps1'
+  $tokenRecords = @(pwsh -NoProfile -File $tokenScript 2>$null)
   $tokenExitCode = $LASTEXITCODE
   if ($tokenExitCode -ne 0) { throw 'Token child failed.' }
   if ($tokenRecords.Count -ne 1 -or [string]::IsNullOrWhiteSpace([string]$tokenRecords[0]) -or [string]$tokenRecords[0] -match '\s') {

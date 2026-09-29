@@ -1,5 +1,5 @@
 [CmdletBinding(SupportsShouldProcess)]
-param([ValidateSet('Acquire','Release')][string]$Action='Acquire',[string]$OwnerRunId=([guid]::NewGuid().ToString('N')),[string]$Nonce,[string]$LeasePath='C:/Users/jobullen/.botnexus/agents/farnsworth/workspace/state/botnexus-external-review-lease.json',[int]$LeaseMinutes=45,[datetimeoffset]$Now=[datetimeoffset]::UtcNow)
+param([ValidateSet('Acquire','Release')][string]$Action='Acquire',[string]$OwnerRunId=([guid]::NewGuid().ToString('N')),[string]$Nonce,[string]$LeasePath=(Join-Path $HOME '.botnexus/agents/farnsworth/workspace/state/botnexus-external-review-lease.json'),[int]$LeaseMinutes=45,[datetimeoffset]$Now=[datetimeoffset]::UtcNow)
 $ErrorActionPreference='Stop'
 if($Action -eq 'Acquire'){
   if(Test-Path -LiteralPath $LeasePath){

@@ -13,8 +13,8 @@ This skill defines mechanics; loading it does not authorize autonomous maintenan
 
 Use this path when a signed GitHub pull-request, check, workflow, or comment event wakes Farnsworth, or when the daily missed-event reconciliation runs.
 
-1. From `Q:/repos/botnexus`, invoke exactly once:
-   `pwsh -NoProfile -File C:/Users/jobullen/.botnexus/skills/botnexus-pr-execution/scripts/Invoke-BotNexusOwnedPullRequestHealth.ps1`
+1. From the BotNexus repository root, invoke exactly once:
+   `pwsh -NoProfile -File "$HOME/.botnexus/skills/botnexus-pr-execution/scripts/Invoke-BotNexusOwnedPullRequestHealth.ps1"`
 2. Treat the command as a deterministic deduplicating router, not as the semantic repair itself. It wakes the owning issue conversation for each newly actionable owned PR; continue repair there.
 3. Do not mutate external-contributor PRs through this path, create PR-specific polling jobs, or rerun the router repeatedly for the same event.
 4. Use one daily invocation only as reconciliation for missed events; normal responsiveness comes from direct event delivery.
