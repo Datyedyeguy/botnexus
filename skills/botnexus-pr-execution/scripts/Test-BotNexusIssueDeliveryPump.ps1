@@ -10,7 +10,10 @@ $checks=@(
   @{name='posts-asynchronous-kickoff';ok=$pump -match '/api/agents/\$AgentId/conversations/\$conversationId/messages' -and $pump -match 'wake=\$true'},
   @{name='forbids-pr-specific-cron';ok=$pump -match 'Do not create a PR-specific cron'},
   @{name='whatif-does-not-mutate';ok=$pump -match '\$dispatchArgs\.WhatIf=\$true' -and $pump -match "'preview'"},
-  @{name='failed-handoff-releases-owned-reservation';ok=$pump -match 'Release-BotNexusIssueLease\.ps1' -and $pump -match 'A reservation without a bound execution conversation'}
+  @{name='failed-handoff-releases-owned-reservation';ok=$pump -match 'Release-BotNexusIssueLease\.ps1' -and $pump -match 'A reservation without a bound execution conversation'},
+  @{name='terminal-blocker-is-dispositioned';ok=$pump -match 'Update-BotNexusIssue\.ps1 -Action Block' -and $pump -match 'immediately selectable again'},
+  @{name='four-hour-stale-lane-recovery';ok=$pump -match 'staleLaneHours' -and $pump -match 'stale-lane-recovery-started' -and $pump -match 'Renew-BotNexusIssueLease\.ps1' -and $pump -match 'issue-delivery-recovery'},
+  @{name='stale-recovery-is-bounded';ok=$pump -match 'Select-Object -First 1' -and $pump -match 'one bounded deterministic read only'}
 )
 foreach($c in $checks){if(-not $c.ok){throw "Pump contract failed: $($c.name)"}}
 [pscustomobject]@{total=$checks.Count;passed=$checks.Count;failed=0;checks=$checks.name}|ConvertTo-Json -Compress

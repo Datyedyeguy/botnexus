@@ -1,7 +1,7 @@
 [CmdletBinding(SupportsShouldProcess)]
 param(
   [Parameter(Mandatory)][int]$Issue,
-  [ValidateSet('Admit','Unadmit','Claim','Release')][string]$Action = 'Claim',
+  [ValidateSet('Admit','Unadmit','Claim','Release','Block')][string]$Action = 'Claim',
   [string]$Repository = 'Sytone/botnexus'
 )
 $ErrorActionPreference = 'Stop'
@@ -21,9 +21,10 @@ $targetLabels = switch ($Action) {
   'Unadmit' { @($labels | Where-Object { $_ -ne 'status:ready-for-agent' }) }
   'Claim' { $withoutAdmission=@($labels | Where-Object { $_ -ne 'status:ready-for-agent' }); @($withoutAdmission + 'status:in-progress' | Select-Object -Unique) }
   'Release' { @($labels | Where-Object { $_ -ne 'status:in-progress' }) }
+  'Block' { @($labels | Where-Object { $_ -notin @('status:ready-for-agent','status:in-progress','status:needs-jon-decision') }) + 'status:blocked' | Select-Object -Unique }
 }
 $updated = $false
-$operation = switch ($Action) {'Admit'{'add status:ready-for-agent'};'Unadmit'{'remove status:ready-for-agent'};'Claim'{'consume status:ready-for-agent and add status:in-progress'};'Release'{'remove status:in-progress'}}
+$operation = switch ($Action) {'Admit'{'add status:ready-for-agent'};'Unadmit'{'remove status:ready-for-agent'};'Claim'{'consume status:ready-for-agent and add status:in-progress'};'Release'{'remove status:in-progress'};'Block'{'replace executable workflow state with status:blocked'}}
 if ($PSCmdlet.ShouldProcess("issue #$Issue", $operation)) {
   $payloadPath = Join-Path $env:TEMP ("botnexus-claim-{0}.json" -f [guid]::NewGuid().ToString('N'))
   try {

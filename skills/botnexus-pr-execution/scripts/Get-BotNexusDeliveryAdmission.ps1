@@ -6,11 +6,12 @@ $contract=Get-Content -LiteralPath $ContractPath -Raw|ConvertFrom-Json
 . (Join-Path $PSScriptRoot 'Import-BotNexusIssueLease.ps1')
 function Read-Json([string]$Path,[scriptblock]$Live){if($Path){@(Get-Content -LiteralPath $Path -Raw|ConvertFrom-Json)}else{@(& $Live)}}
 $leases=@(Get-BotNexusIssueLeases $contract)
-# Capacity represents currently authorized execution, not durable lane inventory. An expired
-# lease may be retained while its conversation/worktree/PR is recovered, but it no longer owns
-# an execution slot. The ordinary lease, conversation, worktree and PR filters below still keep
-# that issue from being admitted a second time.
-$activeLeases=@($leases|Where-Object{[datetimeoffset]$_.expiresAt -gt $Now})
+# Capacity represents healthy recent execution, not durable lane inventory. A lane older than the
+# recovery threshold no longer owns a slot even when an old lease expiry says otherwise. The lease
+# identity remains a duplicate-work fence until deterministic reconciliation recovers or releases it.
+$staleLaneHours=if($contract.PSObject.Properties.Name -contains 'staleLaneHours'){[double]$contract.staleLaneHours}else{4}
+$activeCutoff=$Now.AddHours(-$staleLaneHours)
+$activeLeases=@($leases|Where-Object{[datetimeoffset]$_.acquiredAt -gt $activeCutoff})
 $maximum=[int]$contract.maximumActiveDeliveries;$capacity=[Math]::Max(0,$maximum-$activeLeases.Count)
 if($capacity -eq 0){[pscustomobject]@{status='blocked';code='no-capacity';activeCount=$activeLeases.Count;maximum=$maximum;candidates=@()}|ConvertTo-Json -Depth 8 -Compress;return}
 $issues=Read-Json $IssuesFixture {$raw=gh issue list --repo $contract.repository --state open --limit 1000 --json number,title,body,labels,createdAt,updatedAt,url,author;if($LASTEXITCODE){throw 'GitHub issue query failed.'};$raw|ConvertFrom-Json}
