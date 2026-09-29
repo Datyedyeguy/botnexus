@@ -9,6 +9,21 @@ description: Canonical BotNexus issue-to-PR execution and continual open-PR heal
 
 This skill defines mechanics; loading it does not authorize autonomous maintenance. Run only the specific lane explicitly requested by Jon or triggered by a trusted, signed BotNexus event. Do not infer permission from a cron wake, an open issue/PR, a ready label, an existing lease, or the presence of the scripts. In particular, do not start continual scans, issue triage/admission, or new issue delivery unless the current request/event names that lane. Verify completion by limiting mutations and readback to that authorized lane; when no lane is explicitly authorized, inspect only and make no GitHub, lease, conversation, branch, or worktree changes.
 
+## Daily delivery digest and anomaly investigation
+
+Use this path for the authorized once-daily operational report.
+
+1. Run `scripts/Get-BotNexusDeliveryMetrics.ps1` once. Treat its JSON as the complete 24-hour reporting packet; do not assemble a second census with repeated GitHub calls.
+2. Email Jon a short evidence-first digest through the `mail` skill. Include the reporting window, pull requests created and merged, PRs/hour, issues created and closed, issue net change, open and newly touched blockers, healthy/stale lanes, free slots, triage candidates, and every anomaly code with its threshold. List at most 20 linked detail rows per category.
+3. The initial anomaly rules are deterministic and deliberately conservative:
+   - any delivery lease at least four hours old;
+   - free delivery capacity while triage candidates exist and no agent pull request was created in the last hour;
+   - no agent-authored PR for four hours while a healthy lane or triage candidate exists;
+   - at least three currently blocked issues changed in the 24-hour window;
+   - at least five issues created with closures below half of creations.
+4. For each anomaly, perform one bounded investigation in the same run. Reuse the stalled-lane recovery procedure for stale lanes. For throughput or unused-capacity anomalies, inspect only the pump cron's latest terminal run, current leases, triage packet, and latest agent-authored PR timestamp. For blocker or backlog-growth anomalies, inspect only the affected issue rows and their direct prerequisites. Persist a sanitized public blocker only when current evidence proves one; otherwise recover the executable lane. Do not launch a general maintenance scan or create repeated investigations for the same unchanged evidence.
+5. Report investigation actions and remaining blockers in the email. A healthy digest may say that no anomaly investigation was required. Email failure is a failed report run and must use the cron failure-alert path; it must not stop the five-minute deterministic pump.
+
 ## Event-driven owned-PR health routing
 
 Use this path when a signed GitHub pull-request, check, workflow, or comment event wakes Farnsworth, or when the daily missed-event reconciliation runs.

@@ -20,6 +20,12 @@ The `BotNexus.Cli` dotnet-tool package contains the repository-owned skill trees
 
 A custom home selected through `--target` or `BOTNEXUS_HOME` receives the same synchronization behavior.
 
+## Delivery operations reporting
+
+The PR-execution skill includes a deterministic 24-hour delivery metrics collector. It reports pull-request throughput, issue creation and closure, blocker movement, lane health, free capacity, and triage inventory. The scheduled agent report uses that packet to email the operator and to start bounded investigations when explicit thresholds are crossed. Reporting is separate from the five-minute deterministic issue pump, so mail or investigation failures cannot stop admission.
+
+Thresholds and investigation policy live in the skill manifest; the collector owns census mechanics and structured output. This keeps scheduled prompts small and prevents reporting policy from drifting across cron definitions.
+
 ## Validation
 
 PowerShell contract scripts stored inside each skill remain executable tests. Repository changes to these skills must run their applicable contract scripts and the ordinary authoritative repository validation gate. The CLI tests also pin cross-platform synchronization behavior, managed-directory cleanup, preservation of unrelated skills, and idempotency.
