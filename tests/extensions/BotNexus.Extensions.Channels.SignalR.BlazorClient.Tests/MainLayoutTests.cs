@@ -415,7 +415,7 @@ public sealed class MainLayoutTests : IDisposable
     }
 
     [Fact]
-    public void Non_default_conversation_shows_archive_button()
+    public async Task Non_default_conversation_shows_archive_button()
     {
         _store.SeedAgents([new AgentSummary("a-1", "Alpha")]);
         _store.SeedConversations("a-1", [
@@ -425,12 +425,13 @@ public sealed class MainLayoutTests : IDisposable
 
         var cut = RenderLayout();
 
-        cut.Find("[data-testid='conversation-actions-trigger']").Click();
-        Assert.Equal("Archive", cut.Find("[data-action-id='archive']").TextContent.Trim());
+        await cut.InvokeAsync(() => cut.Find("[data-testid='conversation-actions-trigger']").Click());
+        cut.WaitForAssertion(() =>
+            Assert.Equal("Archive", cut.Find("[data-action-id='archive']").TextContent.Trim()));
     }
 
     [Fact]
-    public void Default_conversation_hides_archive_button()
+    public async Task Default_conversation_hides_archive_button()
     {
         _store.SeedAgents([new AgentSummary("a-1", "Alpha")]);
         _store.SeedConversations("a-1", [
@@ -440,8 +441,8 @@ public sealed class MainLayoutTests : IDisposable
 
         var cut = RenderLayout();
 
-        cut.Find("[data-testid='conversation-actions-trigger']").Click();
-        Assert.Empty(cut.FindAll("[data-action-id='archive']"));
+        await cut.InvokeAsync(() => cut.Find("[data-testid='conversation-actions-trigger']").Click());
+        cut.WaitForAssertion(() => Assert.Empty(cut.FindAll("[data-action-id='archive']")));
     }
 
     [Fact]
@@ -1038,6 +1039,13 @@ public sealed class MainLayoutTests : IDisposable
     {
         var cut = RenderLayout();
         Assert.Equal("compact", cut.Find(".app-shell").GetAttribute("data-density"));
+    }
+
+    [Fact]
+    public void App_shell_carries_classic_shell_attribute_by_default()
+    {
+        var cut = RenderLayout();
+        Assert.Equal("classic", cut.Find(".app-shell").GetAttribute("data-shell"));
     }
 
     [Fact]
