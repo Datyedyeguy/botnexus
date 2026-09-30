@@ -147,7 +147,7 @@ public sealed class AgentProposalReviewServiceTests : IDisposable
         var writer = new Mock<IAgentConfigurationWriter>();
         writer.Setup(w => w.SaveAsync(It.IsAny<AgentDescriptor>(), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
-        writer.Setup(w => w.DeleteAsync(proposal.TargetAgentId.Value, It.IsAny<CancellationToken>()))
+        writer.Setup(w => w.DeleteAsync(proposal.TargetAgentId, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new IOException("compensation unavailable"));
         var provisioner = new Mock<BotNexus.Cron.IHeartbeatProvisioner>();
         provisioner.Setup(p => p.ProvisionAsync(It.IsAny<AgentDescriptor>(), It.IsAny<CancellationToken>()))

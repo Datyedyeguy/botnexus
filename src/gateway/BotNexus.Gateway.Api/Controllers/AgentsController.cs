@@ -281,7 +281,7 @@ public sealed class AgentsController : ControllerBase
         // 1) Delete config first. If this fails the registry still holds the agent (no divergence).
         try
         {
-            await _configurationWriter.DeleteAsync(agentId, cancellationToken);
+            await _configurationWriter.DeleteAsync(typedAgentId, cancellationToken);
         }
         catch (Exception ex)
         {

@@ -139,7 +139,7 @@ public sealed class AgentLifecycleService(
 
     private async Task DeletePersistedConfigBestEffortAsync(AgentId agentId)
     {
-        try { await configurationWriter.DeleteAsync(agentId.Value, CancellationToken.None).ConfigureAwait(false); }
+        try { await configurationWriter.DeleteAsync(agentId, CancellationToken.None).ConfigureAwait(false); }
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to delete persisted config for concurrently removed agent {AgentId}.", agentId.Value);
@@ -163,7 +163,7 @@ public sealed class AgentLifecycleService(
             {
                 if (runtimeCommitted)
                     registry.Unregister(agentId);
-                await configurationWriter.DeleteAsync(agentId.Value, CancellationToken.None).ConfigureAwait(false);
+                await configurationWriter.DeleteAsync(agentId, CancellationToken.None).ConfigureAwait(false);
             }
             else if (restorePrevious && previous is not null)
             {
@@ -172,7 +172,7 @@ public sealed class AgentLifecycleService(
             }
             else
             {
-                await configurationWriter.DeleteAsync(agentId.Value, CancellationToken.None).ConfigureAwait(false);
+                await configurationWriter.DeleteAsync(agentId, CancellationToken.None).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
