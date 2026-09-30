@@ -288,6 +288,11 @@ public sealed class DataTestIdAttributeTests : IDisposable
         Assert.Equal("toolbar", toolbar.GetAttribute("role"));
         Assert.Equal("Conversation actions", toolbar.GetAttribute("aria-label"));
 
+        var attach = cut.Find("[data-testid='chat-attach']");
+        Assert.Equal("Attach files", attach.GetAttribute("aria-label"));
+        Assert.Contains("📎", attach.TextContent);
+        Assert.Empty(attach.QuerySelectorAll("svg"));
+
         AssertIconButton(cut, "chat-steer-btn", "Steer at next turn boundary");
         AssertIconButton(cut, "chat-redirect-btn", "Redirect immediately");
         AssertIconButton(cut, "chat-followup-btn", "Queue follow-up after completion");

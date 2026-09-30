@@ -6582,6 +6582,7 @@ h3.conversation-title.editable:hover {
 /* Chat attachments */
 .attachment-composer { display: contents; }
 .attach-btn { position: relative; cursor: pointer; }
+.attach-paperclip { font-size: 1.1rem; line-height: 1; }
 .attach-btn:focus-within { outline: 2px solid var(--accent); }
 .attachment-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .attachment-chip { display: inline-flex; align-items: center; gap: 0.3rem; max-width: 15rem; padding: 0.25rem 0.4rem; border: 1px solid var(--border); border-radius: var(--radius-pill); font-size: var(--text-label); }
