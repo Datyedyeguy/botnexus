@@ -499,12 +499,13 @@ public sealed class SignalRHubTests
 
         var conversationDispatcher = new DefaultConversationDispatcher(router, conversationStore);
 
-        static SessionCompactionCoordinator NewCoordinator(ISessionStore store)
+        SessionCompactionCoordinator NewCoordinator(ISessionStore store)
             => new(
                 Mock.Of<ISessionCompactor>(),
                 store,
                 Mock.Of<IAgentSupervisor>(),
-                Mock.Of<IChannelManager>(),
+                eventPublisher: null,
+                conversations: conversationStore,
                 new TestOptionsMonitor<CompactionOptions>(new CompactionOptions()),
                 NullLogger<SessionCompactionCoordinator>.Instance);
 
@@ -1365,7 +1366,8 @@ public sealed class SignalRHubTests
             compactorImpl,
             sessionStore,
             supervisorImpl,
-            Mock.Of<IChannelManager>(),
+            eventPublisher: null,
+            conversations: convStore,
             optionsImpl,
             NullLogger<SessionCompactionCoordinator>.Instance);
 
