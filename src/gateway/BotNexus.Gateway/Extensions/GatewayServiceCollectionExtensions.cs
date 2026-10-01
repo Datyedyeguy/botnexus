@@ -296,6 +296,7 @@ public static class GatewayServiceCollectionExtensions
             AttachArchiveDrain(new InMemorySessionStore(), serviceProvider));
         services.TryAddSingleton<ISessionWriteLock, SessionWriteLock>();
         services.TryAddSingleton<IConversationStore, InMemoryConversationStore>();
+        services.TryAddSingleton<IConversationReadStateStore, InMemoryConversationReadStateStore>();
         services.TryAddSingleton<IConversationSectionStore, InMemoryConversationSectionStore>();
         services.TryAddSingleton<IAgentIdentityResolver, AgentIdentityResolver>();
         services.AddSingleton<IAgentCanvasNotifier, ConversationCanvasNotifier>();
@@ -946,6 +947,7 @@ public static class GatewayServiceCollectionExtensions
         if (resolvedType.Equals("InMemory", StringComparison.OrdinalIgnoreCase))
         {
             services.Replace(ServiceDescriptor.Singleton<IConversationStore, InMemoryConversationStore>());
+            services.Replace(ServiceDescriptor.Singleton<IConversationReadStateStore, InMemoryConversationReadStateStore>());
             services.Replace(ServiceDescriptor.Singleton<IConversationSectionStore, InMemoryConversationSectionStore>());
             return;
         }
@@ -967,6 +969,10 @@ public static class GatewayServiceCollectionExtensions
                     fs,
                     serviceProvider.GetService<IWorldContext>());
             }));
+            services.Replace(ServiceDescriptor.Singleton<IConversationReadStateStore>(serviceProvider =>
+                new FileConversationReadStateStore(
+                    Path.Combine(conversationsPath, "read-state"),
+                    serviceProvider.GetRequiredService<IFileSystem>())));
             services.Replace(ServiceDescriptor.Singleton<IConversationSectionStore>(serviceProvider =>
                 new SqliteConversationSectionStore(
                     $"Data Source={Path.Combine(dataDirectory, "sections.sqlite")}",
@@ -993,6 +999,8 @@ public static class GatewayServiceCollectionExtensions
 
             services.AddSingleton<IConversationAuditLog>(
                 new SqliteConversationAuditLog(connectionString));
+            services.Replace(ServiceDescriptor.Singleton<IConversationReadStateStore>(
+                new SqliteConversationReadStateStore(connectionString)));
             services.Replace(ServiceDescriptor.Singleton<IConversationSectionStore>(serviceProvider =>
                 new SqliteConversationSectionStore(
                     connectionString,
