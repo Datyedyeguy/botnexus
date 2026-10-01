@@ -507,6 +507,7 @@ public static class GatewayServiceCollectionExtensions
         services.AddHostedService<SessionConsistencyHostedService>();
         services.TryAddSingleton<IConversationChangeNotifier, NullConversationChangeNotifier>();
         services.AddHostedService<ConversationRetentionHostedService>();
+        services.AddHostedService<LegacyToolInvocationBackfillHostedService>();
         services.AddHostedService<SubAgentWorkspaceSweepHostedService>();
         services.AddHostedService<MemoryIndexer>();
 
