@@ -219,6 +219,32 @@ public sealed class RawConfigPathMutationTests : IDisposable
     }
 
     [Fact]
+    public async Task Config_set_creates_absent_extension_parents_and_writes_explicit_null()
+    {
+        var commands = new ConfigCommands(new ConfigPathResolver());
+
+        var createResult = await commands.ExecuteSetAsync(
+            "agents.assistant.extensions.botnexus-new.options.enabled",
+            "true",
+            _configPath,
+            verbose: false,
+            CancellationToken.None);
+        var nullResult = await commands.ExecuteSetAsync(
+            "agents.assistant.extensions.botnexus-web.search.safeSearch",
+            "null",
+            _configPath,
+            verbose: false,
+            CancellationToken.None);
+
+        createResult.ShouldBe(0);
+        nullResult.ShouldBe(0);
+        var extensions = ReadRoot()["agents"]!["assistant"]!["extensions"]!;
+        extensions["botnexus-new"]!["options"]!["enabled"]!.GetValue<bool>().ShouldBeTrue();
+        extensions["botnexus-web"]!["search"]!.AsObject().ContainsKey("safeSearch").ShouldBeTrue();
+        extensions["botnexus-web"]!["search"]!["safeSearch"].ShouldBeNull();
+    }
+
+    [Fact]
     public async Task Config_set_matches_nested_extension_keys_case_insensitively()
     {
         var exitCode = await new ConfigCommands(new ConfigPathResolver()).ExecuteSetAsync(
