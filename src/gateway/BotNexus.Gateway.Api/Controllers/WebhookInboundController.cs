@@ -584,10 +584,6 @@ public sealed class WebhookInboundController(
         WebhookRun run, AgentId agentId, ConversationId conversationId,
         string message, CancellationToken ct)
     {
-        run.Status = WebhookRunStatus.Running;
-        run.StartedAt = DateTimeOffset.UtcNow;
-        await runStore.UpdateAsync(run, CancellationToken.None);
-
         try
         {
             // Build inbound message routing through the existing orchestrator —
@@ -610,7 +606,15 @@ public sealed class WebhookInboundController(
                 }
             };
 
-            var result = await orchestrator.AcceptAsync(inbound, ct);
+            var executionControl = new InboundExecutionControl(
+                ct,
+                async () =>
+                {
+                    run.Status = WebhookRunStatus.Running;
+                    run.StartedAt = DateTimeOffset.UtcNow;
+                    await runStore.UpdateAsync(run, CancellationToken.None);
+                });
+            var result = await orchestrator.AcceptAsync(inbound, executionControl, ct);
 
             // Extract session ID and agent response from the session store.
             var sessionId = result.Dispatches.FirstOrDefault()?.Resolution.SessionId;
@@ -630,6 +634,10 @@ public sealed class WebhookInboundController(
                 AgentResponse = agentResponse,
                 SessionId = sessionId
             };
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
