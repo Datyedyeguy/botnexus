@@ -297,6 +297,9 @@ internal class UpdateCommand
 
         // Step 2: Stop gateway BEFORE building — releases file locks on Windows
         var gatewayBinary = ResolveGatewayBinaryPath(repoRoot);
+        var gatewayUrl = GatewayProbeUrlResolver.ResolveFromConfig(
+            fallbackPort: port,
+            configPath: Path.Combine(home, "config.json"));
         GatewayStopResult stopResult;
         if (interactive)
         {
@@ -306,14 +309,14 @@ internal class UpdateCommand
                 .SpinnerStyle(Style.Parse("blue"))
                 .StartAsync("Stopping gateway...", async ctx =>
                 {
-                    capturedStop = await _processManager.StopAsync(home, gatewayBinary, cancellationToken);
+                    capturedStop = await _processManager.StopAsync(home, gatewayBinary, cancellationToken, gatewayUrl);
                 });
             stopResult = capturedStop;
         }
         else
         {
             AnsiConsole.MarkupLine("[blue][[update]][/] Stopping gateway...");
-            stopResult = await _processManager.StopAsync(home, gatewayBinary, cancellationToken);
+            stopResult = await _processManager.StopAsync(home, gatewayBinary, cancellationToken, gatewayUrl);
         }
 
         stopResult ??= new GatewayStopResult(false, "no result", GatewayStopOutcome.Failed);
