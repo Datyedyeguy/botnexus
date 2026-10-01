@@ -77,7 +77,8 @@ public sealed class WebToolsContributor : IAgentToolContributor
                 tools.Add(new WebSearchTool(
                     searchConfig,
                     copilotApiKeyResolver: useCopilotProvider
-                        ? ct => context.GetProviderApiKeyAsync(context.Descriptor.ApiProvider, ct)
+                        ? ct => context.GetCopilotMcpOAuthTokenAsync?.Invoke(context.Descriptor.ApiProvider, ct)
+                            ?? Task.FromResult<string?>(null)
                         : null,
                     copilotApiEndpoint: copilotApiEndpoint,
                     logger: _loggerFactory?.CreateLogger<WebSearchTool>(),

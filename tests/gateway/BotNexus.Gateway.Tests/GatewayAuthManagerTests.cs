@@ -26,6 +26,169 @@ public sealed class GatewayAuthManagerTests : IDisposable
         _legacyAuthFilePath = Path.Combine(_rootPath, "legacy-auth.json");
     }
 
+    [Theory]
+    [InlineData("github-copilot")]
+    [InlineData("copilot")]
+    public async Task GetCopilotMcpOAuthTokenAsync_SeparatesSearchFromInference(string provider)
+    {
+        const string authJson = """
+            {"github-copilot":{"type":"oauth","access":"fake-session","refresh":"fake-oauth","expires":4102444800000}}
+            """;
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, authJson);
+        var manager = CreateManager(new PlatformConfig());
+
+        (await manager.GetCopilotMcpOAuthTokenAsync(provider)).ShouldBe("fake-oauth");
+        (await manager.GetApiKeyAsync(provider)).ShouldBe("fake-session");
+        (await _fileSystem.File.ReadAllTextAsync(_authFilePath)).ShouldBe(authJson);
+    }
+
+    [Fact]
+    public async Task GetCopilotMcpOAuthTokenAsync_NamedInstanceUsesReferencedProfileAndEndpoint()
+    {
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, """
+            {
+              "github-copilot":{"type":"oauth","access":"fake-default-session","refresh":"fake-default-oauth","expires":4102444800000},
+              "work-auth":{"type":"oauth","access":"fake-work-session","refresh":"fake-work-oauth","expires":4102444800000,"endpoint":"https://api.enterprise.githubcopilot.com"}
+            }
+            """);
+        var manager = CreateManager(new PlatformConfig
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["copilot-work"] = new() { Type = "github-copilot", ApiKey = "auth:work-auth" }
+            }
+        });
+
+        (await manager.GetCopilotMcpOAuthTokenAsync("copilot-work")).ShouldBe("fake-work-oauth");
+        (await manager.GetApiKeyAsync("copilot-work")).ShouldBe("fake-work-session");
+        manager.GetCopilotMcpEndpoint("copilot-work").ShouldBe("https://api.enterprise.githubcopilot.com/mcp");
+        (await manager.GetCopilotMcpOAuthTokenAsync("copilot-other")).ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("oauth", "")]
+    [InlineData("oauth", "   ")]
+    [InlineData("token", "fake-not-oauth")]
+    public async Task GetCopilotMcpOAuthTokenAsync_UnusableOAuthDoesNotReturnSession(string type, string refresh)
+    {
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            copilot = new { type, refresh, access = "fake-session", expires = 4102444800000L }
+        }));
+        var manager = CreateManager(new PlatformConfig());
+
+        (await manager.GetCopilotMcpOAuthTokenAsync("copilot")).ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("auth:")]
+    [InlineData("auth:missing")]
+    [InlineData("fake-configured-session")]
+    public async Task GetCopilotMcpOAuthTokenAsync_MissingProfileDoesNotFallBack(string apiKey)
+    {
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, """
+            {"github-copilot":{"type":"oauth","access":"fake-default-session","refresh":"fake-default-oauth","expires":4102444800000}}
+            """);
+        var manager = CreateManager(new PlatformConfig
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["copilot-work"] = new() { Type = "github-copilot", ApiKey = apiKey }
+            }
+        });
+
+        (await manager.GetCopilotMcpOAuthTokenAsync("copilot-work")).ShouldBeNull();
+        (await manager.GetCopilotMcpOAuthTokenAsync("")).ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task GetCopilotMcpOAuthTokenAsync_ExpiredSessionDoesNotExchangeOAuthCredential()
+    {
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, """
+            {"github-copilot":{"type":"oauth","access":"fake-expired-session","refresh":"fake-oauth","expires":1}}
+            """);
+        var manager = CreateManager(new PlatformConfig(), refreshEntry: (_, _) =>
+            throw new InvalidOperationException("Search must not exchange the inference credential."));
+
+        (await manager.GetCopilotMcpOAuthTokenAsync("github-copilot")).ShouldBe("fake-oauth");
+    }
+
+    [Theory]
+    [InlineData("openai", null)]
+    [InlineData("other-work", "openai")]
+    [InlineData("github-copilot", "openai")]
+    [InlineData("copilot", "anthropic")]
+    public async Task GetCopilotMcpOAuthTokenAsync_NonCopilotFamilyRejectsDirectAndReferencedOAuth(
+        string provider, string? providerType)
+    {
+        var entries = new Dictionary<string, object>
+        {
+            [provider] = new { type = "oauth", access = "fake-direct-session", refresh = "fake-direct-oauth", expires = 4102444800000L },
+            ["referenced-auth"] = new { type = "oauth", access = "fake-reference-session", refresh = "fake-reference-oauth", expires = 4102444800000L }
+        };
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, System.Text.Json.JsonSerializer.Serialize(entries));
+        var manager = CreateManager(new PlatformConfig
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                [provider] = new() { Type = providerType, ApiKey = "auth:referenced-auth" }
+            }
+        });
+        (await manager.GetCopilotMcpOAuthTokenAsync(provider)).ShouldBeNull();
+
+        entries.Remove(provider);
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, System.Text.Json.JsonSerializer.Serialize(entries));
+        manager.InvalidateCache();
+        (await manager.GetCopilotMcpOAuthTokenAsync(provider)).ShouldBeNull();
+    }
+
+    [Theory]
+    [InlineData("github-copilot")]
+    [InlineData("copilot")]
+    [InlineData("GITHUB-COPILOT")]
+    public async Task GetCopilotMcpOAuthTokenAsync_NamedCopilotFamilyDirectProfilePrecedesReference(string providerType)
+    {
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, """
+            {
+              "copilot-work":{"type":"oauth","access":"fake-direct-session","refresh":"fake-direct-oauth","expires":4102444800000,"endpoint":"https://direct.test"},
+              "referenced-auth":{"type":"oauth","access":"fake-reference-session","refresh":"fake-reference-oauth","expires":4102444800000,"endpoint":"https://reference.test"}
+            }
+            """);
+        var manager = CreateManager(new PlatformConfig
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["copilot-work"] = new() { Type = providerType, ApiKey = "auth:referenced-auth" }
+            }
+        });
+
+        (await manager.GetCopilotMcpOAuthTokenAsync("COPILOT-WORK")).ShouldBe("fake-direct-oauth");
+        (await manager.GetApiKeyAsync("copilot-work")).ShouldBe("fake-direct-session");
+        manager.GetCopilotMcpEndpoint("copilot-work").ShouldBe("https://direct.test/mcp");
+    }
+
+    [Theory]
+    [InlineData("oauth", "")]
+    [InlineData("token", "fake-not-oauth")]
+    public async Task GetCopilotMcpOAuthTokenAsync_UnusableDirectProfileDoesNotUseValidReference(string type, string refresh)
+    {
+        var entries = new Dictionary<string, object>
+        {
+            ["copilot-work"] = new { type, refresh, access = "fake-direct-session", expires = 4102444800000L },
+            ["referenced-auth"] = new { type = "oauth", refresh = "fake-reference-oauth", access = "fake-reference-session", expires = 4102444800000L }
+        };
+        await _fileSystem.File.WriteAllTextAsync(_authFilePath, System.Text.Json.JsonSerializer.Serialize(entries));
+        var manager = CreateManager(new PlatformConfig
+        {
+            Providers = new Dictionary<string, ProviderConfig>
+            {
+                ["copilot-work"] = new() { Type = "github-copilot", ApiKey = "auth:referenced-auth" }
+            }
+        });
+
+        (await manager.GetCopilotMcpOAuthTokenAsync("copilot-work")).ShouldBeNull();
+    }
+
     [Fact]
     public async Task GetApiKeyAsync_WhenAuthJsonHasValidEntry_ReturnsAccessToken()
     {

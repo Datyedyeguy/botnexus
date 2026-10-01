@@ -93,6 +93,30 @@ Configure in your agent's extension config block:
 > [API reference](https://webiq.microsoft.ai/documentation/api-reference/web) — which BotNexus may
 > surface as additional search options in future.
 
+### Copilot search authentication
+
+Copilot search requires a signed-in Copilot OAuth profile for the agent's selected provider
+instance. A model-inference API key alone is not enough. Search uses the retained GitHub OAuth
+credential; model inference continues to use the exchanged Copilot session credential.
+The stored credential fields are not swapped or rewritten by search.
+
+Only instances in the `github-copilot` or `copilot` provider family can supply search credentials.
+An explicit provider `type` determines the family; otherwise the instance key is used.
+Other provider families are rejected even when they have an OAuth profile.
+
+Named provider instances keep their own authentication routing. A direct auth profile for the
+instance takes precedence over its `auth:` reference. When no direct profile exists, search uses
+the referenced profile rather than the default Copilot account. An unusable direct profile does
+not fall through to the reference.
+Enterprise endpoint selection is unchanged. If the selected OAuth credential is missing,
+search reports that authentication is unavailable instead of using an inference token or
+another account. Sign in to the selected provider profile again; do not paste credentials into
+messages, logs, or documentation.
+
+An HTTP 405 response to the initial MCP GET allows the existing transport to proceed with POST
+initialization. HTTP 400 remains an error. A 405 response alone does not prove that initialization
+or search succeeds; those steps require separate verification.
+
 ## Security
 
 ### SSRF Protection
