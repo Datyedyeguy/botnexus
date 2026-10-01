@@ -61,9 +61,10 @@ internal static class CliConfigMutation
         string reason,
         bool verbose,
         CancellationToken cancellationToken,
-        IReadOnlyCollection<string>? namedSections = null)
+        IReadOnlyCollection<string>? namedSections = null,
+        bool preserveStoreOnly = false)
     {
-        var writer = CreateWriter(configPath);
+        var writer = CreateWriter(configPath, preserveStoreOnly);
 
         IReadOnlyList<string> errors;
         try
@@ -129,14 +130,18 @@ internal static class CliConfigMutation
     /// non-validating mutate overload go through the same construction rather than re-deriving the
     /// backup directory.
     /// </summary>
-    public static PlatformConfigWriter CreateWriter(string configPath)
+    public static PlatformConfigWriter CreateWriter(string configPath, bool preserveStoreOnly = false)
     {
         var directory = Path.GetDirectoryName(configPath) ?? BotNexusHome.ResolveHomePath();
         PlatformConfigLoader.EnsureConfigDirectory(directory);
 
         var fileSystem = new System.IO.Abstractions.FileSystem();
         var backupsDir = Path.Combine(directory, "backups");
-        return ConfigWriterFactory.Create(configPath, fileSystem, new ConfigBackupService(backupsDir, fileSystem));
+        return ConfigWriterFactory.Create(
+            configPath,
+            fileSystem,
+            new ConfigBackupService(backupsDir, fileSystem),
+            preserveStoreOnly);
     }
 
     /// <summary>

@@ -160,6 +160,28 @@ public sealed class ConfigDocument
     public int CountEntries(string path) => GetEntryKeys(path).Count;
 
     /// <summary>
+    /// Reads any JSON value at a canonical path without exposing the mutable document node.
+    /// </summary>
+    public bool TryGetJsonValue(string path, out JsonElement value, out string error)
+    {
+        value = default;
+        if (!ConfigPathBinding.TryRecognise(path, out error))
+            return false;
+
+        if (!RawConfigPath.Exists(_root, path))
+        {
+            error = $"Configuration path '{path}' does not exist.";
+            return false;
+        }
+
+        var node = RawConfigPath.Get(_root, path);
+        using var document = JsonDocument.Parse(node?.ToJsonString() ?? "null");
+        value = document.RootElement.Clone();
+        error = string.Empty;
+        return true;
+    }
+
+    /// <summary>
     /// The on-disk key of <paramref name="sectionPath"/> matching <paramref name="key"/>
     /// case-insensitively, or null when the section or entry is absent.
     /// </summary>
@@ -193,6 +215,34 @@ public sealed class ConfigDocument
 
         if (!TryConvert(value, path, out var node, out error))
             return false;
+
+        return RawConfigPath.TrySet(_root, path, node, out error);
+    }
+
+    /// <summary>
+    /// Sets a free-form JSON value from CLI text. Valid JSON retains its value kind; other text is
+    /// stored as a JSON string. This is used only below an opaque typed-configuration boundary.
+    /// </summary>
+    public bool TrySetJsonValue(string path, string rawValue, out string error)
+    {
+        if (!ConfigPathBinding.TryRecognise(path, out var declaredType, out error))
+            return false;
+
+        if (declaredType is not null)
+        {
+            error = $"Configuration path '{path}' is typed and cannot be written as free-form JSON.";
+            return false;
+        }
+
+        JsonNode? node;
+        try
+        {
+            node = JsonNode.Parse(rawValue);
+        }
+        catch (JsonException)
+        {
+            node = JsonValue.Create(rawValue);
+        }
 
         return RawConfigPath.TrySet(_root, path, node, out error);
     }

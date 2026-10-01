@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using BotNexus.Cli.Commands;
 using BotNexus.Gateway.Configuration;
+using BotNexus.Gateway.Configuration.Store;
 using Shouldly;
 using Spectre.Console;
 
@@ -74,13 +75,32 @@ public sealed class RawConfigPathMutationTests : IDisposable
           "agents": {
             "defaults": {
               "provider": "copilot",
-              "model": "gpt-4.1"
+              "model": "gpt-4.1",
+              "extensions": {
+                "botnexus-skills": {
+                  "enabled": true,
+                  "allowSharedSkillManagement": true,
+                  "sibling": "keep-default"
+                }
+              }
             },
             "assistant": {
               "provider": "copilot",
               "model": "gpt-4.1",
               "displayName": "Assistant",
-              "unknownAgentField": "agent-canary"
+              "unknownAgentField": "agent-canary",
+              "extensions": {
+                "botnexus-web": {
+                  "search": {
+                    "maxResults": 5,
+                    "safeSearch": true
+                  },
+                  "fallbacks": [
+                    { "name": "first", "enabled": true },
+                    { "name": "second", "enabled": false }
+                  ]
+                }
+              }
             }
           }
         }
@@ -150,6 +170,118 @@ public sealed class RawConfigPathMutationTests : IDisposable
         root["gateway"]!["listenUrl"]!.GetValue<string>().ShouldBe("http://localhost:6001");
         root["gateway"]!["defaultAgentId"]!.GetValue<string>().ShouldBe("assistant");
         AssertCanariesSurvive();
+    }
+
+    [Fact]
+    public async Task Config_set_updates_nested_extension_values_and_preserves_siblings()
+    {
+        var commands = new ConfigCommands(new ConfigPathResolver());
+
+        var defaultsResult = await commands.ExecuteSetAsync(
+            "agents.defaults.extensions.botnexus-skills.allowSharedSkillManagement",
+            "false",
+            _configPath,
+            verbose: false,
+            CancellationToken.None);
+        var agentResult = await commands.ExecuteSetAsync(
+            "agents.assistant.extensions.botnexus-web.search.maxResults",
+            "7",
+            _configPath,
+            verbose: false,
+            CancellationToken.None);
+        var arrayResult = await commands.ExecuteSetAsync(
+            "agents.assistant.extensions.botnexus-web.fallbacks[1].enabled",
+            "true",
+            _configPath,
+            verbose: false,
+            CancellationToken.None);
+
+        defaultsResult.ShouldBe(0);
+        agentResult.ShouldBe(0);
+        arrayResult.ShouldBe(0);
+        (await commands.ExecuteGetAsync(
+            "agents.assistant.extensions.botnexus-web.search.maxResults",
+            _configPath,
+            verbose: false,
+            CancellationToken.None)).ShouldBe(0);
+
+        var root = ReadRoot();
+        var skills = root["agents"]!["defaults"]!["extensions"]!["botnexus-skills"]!;
+        skills["allowSharedSkillManagement"]!.GetValue<bool>().ShouldBeFalse();
+        skills["enabled"]!.GetValue<bool>().ShouldBeTrue();
+        skills["sibling"]!.GetValue<string>().ShouldBe("keep-default");
+
+        var web = root["agents"]!["assistant"]!["extensions"]!["botnexus-web"]!;
+        web["search"]!["maxResults"]!.GetValue<int>().ShouldBe(7);
+        web["search"]!["safeSearch"]!.GetValue<bool>().ShouldBeTrue();
+        web["fallbacks"]![0]!["name"]!.GetValue<string>().ShouldBe("first");
+        web["fallbacks"]![1]!["enabled"]!.GetValue<bool>().ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Config_set_matches_nested_extension_keys_case_insensitively()
+    {
+        var exitCode = await new ConfigCommands(new ConfigPathResolver()).ExecuteSetAsync(
+            "AGENTS.ASSISTANT.EXTENSIONS.BOTNEXUS-WEB.SEARCH.MAXRESULTS",
+            "9",
+            _configPath,
+            verbose: false,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(0);
+        var search = ReadRoot()["agents"]!["assistant"]!["extensions"]!["botnexus-web"]!["search"]!.AsObject();
+        search["maxResults"]!.GetValue<int>().ShouldBe(9);
+        search.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task Config_set_invalid_nested_extension_path_is_atomic_and_names_full_path()
+    {
+        const string path = "agents.assistant.extensions.botnexus-web.search.maxResults.value";
+        var before = File.ReadAllText(_configPath);
+
+        var exitCode = await new ConfigCommands(new ConfigPathResolver()).ExecuteSetAsync(
+            path,
+            "7",
+            _configPath,
+            verbose: false,
+            CancellationToken.None);
+
+        exitCode.ShouldBe(1);
+        File.ReadAllText(_configPath).ShouldBe(before);
+
+        var document = ConfigDocument.Parse(before);
+        document.TrySetJsonValue(path, "7", out var error).ShouldBeFalse();
+        error.ShouldContain(path);
+        error.ShouldNotContain("JsonElement");
+    }
+
+    [Fact]
+    public async Task Config_set_store_only_updates_nested_extension_without_recreating_config_json()
+    {
+        var storePath = ConfigStoreBootstrap.ResolveStorePath(_configPath, new System.IO.Abstractions.FileSystem());
+        await ConfigStoreBootstrap.PopulateAsync(storePath, ReadRoot());
+        File.Delete(_configPath);
+
+        try
+        {
+            var exitCode = await new ConfigCommands(new ConfigPathResolver()).ExecuteSetAsync(
+                "agents.defaults.extensions.botnexus-skills.allowSharedSkillManagement",
+                "false",
+                _configPath,
+                verbose: false,
+                CancellationToken.None);
+
+            exitCode.ShouldBe(0);
+            File.Exists(_configPath).ShouldBeFalse();
+            var entries = await new SqliteConfigStore($"Data Source={storePath}").ReadEntriesAsync();
+            entries["agents.defaults.extensions.botnexus-skills.allowSharedSkillManagement"].Value.ShouldBe("false");
+            entries["agents.defaults.extensions.botnexus-skills.sibling"].Value.ShouldBe(JsonSerializer.Serialize("keep-default"));
+        }
+        finally
+        {
+            ConfigStoreBootstrap.ReleaseConnections(storePath);
+        }
     }
 
     [Fact]

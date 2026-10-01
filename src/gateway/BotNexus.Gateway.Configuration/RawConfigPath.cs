@@ -99,14 +99,38 @@ internal static class RawConfigPath
                     return true;
                 }
 
-                current = EnsureObject(container, key);
+                if (container[key] is null)
+                {
+                    var created = new JsonObject();
+                    container[key] = created;
+                    current = created;
+                    continue;
+                }
+
+                if (container[key] is not JsonObject existingObject)
+                {
+                    error = $"Configuration path '{dottedPath}' cannot be resolved because '{key}' is not an object.";
+                    return false;
+                }
+
+                current = existingObject;
                 continue;
             }
 
-            if (container[key] is not JsonArray array)
+            JsonArray array;
+            if (container[key] is null)
             {
-                array = new JsonArray();
+                array = [];
                 container[key] = array;
+            }
+            else if (container[key] is JsonArray existingArray)
+            {
+                array = existingArray;
+            }
+            else
+            {
+                error = $"Configuration path '{dottedPath}' cannot be resolved because '{key}' is not an array.";
+                return false;
             }
 
             var index = segment.Index.Value;
@@ -119,10 +143,18 @@ internal static class RawConfigPath
                 return true;
             }
 
+            if (array[index] is null)
+            {
+                var created = new JsonObject();
+                array[index] = created;
+                current = created;
+                continue;
+            }
+
             if (array[index] is not JsonObject element)
             {
-                element = new JsonObject();
-                array[index] = element;
+                error = $"Configuration path '{dottedPath}' cannot be resolved because index {index} of '{key}' is not an object.";
+                return false;
             }
 
             current = element;
@@ -378,16 +410,6 @@ internal static class RawConfigPath
         }
 
         return name;
-    }
-
-    private static JsonObject EnsureObject(JsonObject container, string key)
-    {
-        if (container[key] is JsonObject existing)
-            return existing;
-
-        var created = new JsonObject();
-        container[key] = created;
-        return created;
     }
 
     private static bool TryParse(string? dottedPath, out IReadOnlyList<PathSegment> segments, out string error)

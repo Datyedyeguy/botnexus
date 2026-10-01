@@ -39,7 +39,8 @@ public static class ConfigWriterFactory
     public static PlatformConfigWriter Create(
         string configPath,
         IFileSystem fileSystem,
-        ConfigBackupService? backup = null)
+        ConfigBackupService? backup = null,
+        bool preserveStoreOnly = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configPath);
         ArgumentNullException.ThrowIfNull(fileSystem);
@@ -50,14 +51,17 @@ public static class ConfigWriterFactory
 
         backup ??= new ConfigBackupService(fileSystem.Path.Combine(directory, "backups"), fileSystem);
 
-        var writers = new List<IConfigurationWriter>
-        {
-            new JsonConfigurationWriter(configPath, fileSystem, backup),
-        };
-
         var storePath = fileSystem.Path.Combine(directory, ConfigStoreBootstrap.StoreFileName);
+        var storeExists = fileSystem.File.Exists(storePath);
+        var writers = new List<IConfigurationWriter>();
+
+        // Most existing writer callers maintain a synchronized JSON projection. A command whose
+        // contract explicitly preserves a store-only installation can opt out of recreating it.
+        if (!preserveStoreOnly || fileSystem.File.Exists(configPath) || !storeExists)
+            writers.Add(new JsonConfigurationWriter(configPath, fileSystem, backup));
+
         IConfigStore? store = null;
-        if (fileSystem.File.Exists(storePath))
+        if (storeExists)
         {
             store = new SqliteConfigStore($"Data Source={storePath}");
             writers.Add(new SqliteConfigurationWriter(store, storePath));

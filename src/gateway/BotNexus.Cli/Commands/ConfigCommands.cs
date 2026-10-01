@@ -378,6 +378,28 @@ internal sealed class ConfigCommands(IConfigPathResolver configPathResolver)
 
     public async Task<int> ExecuteGetAsync(string keyPath, string configPath, bool verbose, CancellationToken cancellationToken)
     {
+        if (!ConfigPresence.Exists(configPath))
+        {
+            AnsiConsole.MarkupLine(configPath.NotFoundMessage());
+            return 1;
+        }
+
+        var isRecognised = ConfigPathBinding.TryRecognise(keyPath, out var declaredType, out _);
+        if (isRecognised && declaredType is null)
+        {
+            var document = await CliConfigMutation.ReadAsync(configPath, cancellationToken);
+            if (!document.TryGetJsonValue(keyPath, out var jsonValue, out var jsonError))
+            {
+                AnsiConsole.MarkupLine($"[red]Error:[/] {CliText.SafeDisplay(jsonError)}");
+                return 1;
+            }
+
+            PrintValue(jsonValue);
+            if (verbose)
+                AnsiConsole.MarkupLine($"[dim]Read key: {CliText.SafeDisplay(keyPath)}[/]");
+            return 0;
+        }
+
         var config = await LoadConfigRequiredAsync(configPath, cancellationToken);
         if (config is null)
             return 1;
@@ -400,6 +422,30 @@ internal sealed class ConfigCommands(IConfigPathResolver configPathResolver)
 
     public async Task<int> ExecuteSetAsync(string keyPath, string rawValue, string configPath, bool verbose, CancellationToken cancellationToken)
     {
+        if (!ConfigPresence.Exists(configPath))
+        {
+            AnsiConsole.MarkupLine(configPath.NotFoundMessage());
+            return 1;
+        }
+
+        var isRecognised = ConfigPathBinding.TryRecognise(keyPath, out var declaredType, out _);
+        if (isRecognised && declaredType is null)
+        {
+            var opaqueSave = await CliConfigMutation.ApplyAsync(
+                configPath,
+                document => document.TrySetJsonValue(keyPath, rawValue, out var setError) ? null : setError,
+                "before-config-set",
+                verbose,
+                cancellationToken,
+                preserveStoreOnly: true);
+            if (opaqueSave.ExitCode != 0)
+                return opaqueSave.ExitCode;
+
+            AnsiConsole.MarkupLine($"[green]\u2713[/] Set [green]{CliText.SafeDisplay(keyPath)}[/].");
+            opaqueSave.PrintReceipt();
+            return 0;
+        }
+
         var config = await LoadConfigRequiredAsync(configPath, cancellationToken);
         if (config is null)
             return 1;
