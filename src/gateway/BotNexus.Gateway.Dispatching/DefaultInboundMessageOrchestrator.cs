@@ -417,7 +417,7 @@ public sealed class DefaultInboundMessageOrchestrator : IInboundMessageOrchestra
 
         try
         {
-            return await _waitForRunningCompletion(queueItem.Completion.Task, cancellationToken);
+            return await queueItem.Completion.Task.WaitAsync(_queueWaitTimeout, cancellationToken);
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
