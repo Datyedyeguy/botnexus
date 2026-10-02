@@ -20,7 +20,7 @@ public sealed class HookExceptionSafetyTests
         var options = TestHelpers.CreateTestOptions(initialState, model: TestHelpers.CreateTestModel(HookApi))
             with
             {
-                BeforeToolCall = (_, _) => throw new InvalidOperationException("before hook exploded")
+                ToolExecutionPolicy = (_, _) => throw new InvalidOperationException("before hook exploded")
             };
         var agent = new BotNexus.Agent.Core.Agent(options);
 
@@ -42,7 +42,7 @@ public sealed class HookExceptionSafetyTests
         var options = TestHelpers.CreateTestOptions(initialState, model: TestHelpers.CreateTestModel(HookApi))
             with
             {
-                AfterToolCall = (_, _) => throw new InvalidOperationException("after hook exploded")
+                ToolResultTransformer = (_, _) => throw new InvalidOperationException("after hook exploded")
             };
         var agent = new BotNexus.Agent.Core.Agent(options);
 

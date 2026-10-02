@@ -26,7 +26,7 @@ public class ToolResultSanitizerTests
         var assistant = CreateAssistantMessage("t1", "generic");
         var config = TestHelpers.CreateTestConfig(toolExecutionMode: mode) with
         {
-            SanitizeToolResultText = RedactSyntheticSecret
+            ToolResultTextTransformer = RedactSyntheticSecret
         };
 
         var result = (await ToolExecutor.ExecuteAsync(
@@ -58,11 +58,11 @@ public class ToolResultSanitizerTests
         var context = new AgentContext(null, [], [tool]);
         var assistant = CreateAssistantMessage("t1", "generic");
         var config = TestHelpers.CreateTestConfig(
-            afterToolCall: (_, _) => Task.FromResult<AfterToolCallResult?>(new AfterToolCallResult(
+            afterToolCall: (_, _) => Task.FromResult<ToolResultTransformResult?>(new ToolResultTransformResult(
                 [new AgentToolContent(AgentToolContentType.Text, $"replacement {secret}")],
                 IsError: true))) with
         {
-            SanitizeToolResultText = RedactSyntheticSecret
+            ToolResultTextTransformer = RedactSyntheticSecret
         };
 
         var result = (await ToolExecutor.ExecuteAsync(

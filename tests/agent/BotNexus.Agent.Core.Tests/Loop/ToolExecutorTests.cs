@@ -276,7 +276,7 @@ public class ToolExecutorTests
         var context = new AgentContext(null, [], [tool]);
         var assistant = CreateAssistantMessage(("t1", "echo", "first"));
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(new BeforeToolCallResult(true, "blocked")));
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(new ToolExecutionDecision(true, "blocked")));
 
         var results = await ToolExecutor.ExecuteAsync(context, assistant, config, _ => Task.CompletedTask, CancellationToken.None);
 
@@ -311,7 +311,7 @@ public class ToolExecutorTests
         var assistant = CreateAssistantMessage(("t1", "echo", "first"));
         var modifiedContent = new AgentToolContent(AgentToolContentType.Text, "modified");
         var config = TestHelpers.CreateTestConfig(
-            afterToolCall: (_, _) => Task.FromResult<AfterToolCallResult?>(new AfterToolCallResult([modifiedContent], IsError: false)));
+            afterToolCall: (_, _) => Task.FromResult<ToolResultTransformResult?>(new ToolResultTransformResult([modifiedContent], IsError: false)));
 
         var results = await ToolExecutor.ExecuteAsync(context, assistant, config, _ => Task.CompletedTask, CancellationToken.None);
 

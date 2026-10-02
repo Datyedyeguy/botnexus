@@ -123,17 +123,17 @@ public sealed class ToolAuditWriteAheadFailClosedTests
             "A cancelled, crashed or timed-out run must still leave the explicit incomplete record (#2615 AC3/AC4).");
     }
 
-    private static BeforeToolCallDelegate BuildHook(ToolAuditWriteAhead writeAhead)
+    private static ToolExecutionPolicy BuildHook(ToolAuditWriteAhead writeAhead)
         => async (ctx, ct) =>
         {
             await writeAhead.PersistStartAsync(ctx.ToolCallRequest.Id, ctx.ToolCallRequest.Name, ctx.ValidatedArgs, ct);
             return null;
         };
 
-    private static BeforeToolCallContext Context(IAgentTool tool, string callId, string toolName)
+    private static ToolExecutionContext Context(IAgentTool tool, string callId, string toolName)
     {
         var args = new Dictionary<string, object?> { ["command"] = "rm -rf /" };
-        return new BeforeToolCallContext(
+        return new ToolExecutionContext(
             new AssistantAgentMessage("calling", ToolCalls: [new ToolCallContent(callId, toolName, args)]),
             new ToolCallContent(callId, toolName, args),
             args,

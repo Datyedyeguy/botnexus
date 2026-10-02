@@ -9,25 +9,25 @@ namespace BotNexus.Agent.Core.Configuration;
 /// </summary>
 /// <param name="InitialState">The optional initial mutable state seed (system prompt, model, tools, messages).</param>
 /// <param name="Model">The model definition used for provider calls (can be overridden in InitialState).</param>
-/// <param name="ConvertToLlm">Optional converter for agent messages to provider chat messages before each LLM call.</param>
-/// <param name="TransformContext">Optional context transformer before provider invocation (defaults to identity passthrough).</param>
-/// <param name="GetProviderExecutionOptions">Resolves provider execution policy, including credentials, on demand.</param>
-/// <param name="GetSteeringMessages">Provides steering messages when configured (combined with Agent.Steer queues).</param>
-/// <param name="GetFollowUpMessages">Provides follow-up messages when configured (combined with Agent.FollowUp queues).</param>
+/// <param name="ProviderMessageTransformer">Optional converter for agent messages to provider chat messages before each LLM call.</param>
+/// <param name="AgentContextTransformer">Optional context transformer before provider invocation (defaults to identity passthrough).</param>
+/// <param name="ProviderExecutionOptionsProvider">Resolves provider execution policy, including credentials, on demand.</param>
+/// <param name="SteeringMessageProvider">Provides steering messages when configured (combined with Agent.Steer queues).</param>
+/// <param name="FollowUpMessageProvider">Provides follow-up messages when configured (combined with Agent.FollowUp queues).</param>
 /// <param name="ToolExecutionMode">Controls tool execution ordering (Sequential or Parallel).</param>
-/// <param name="BeforeToolAudit">Optional durable audit hook invoked before the policy-only tool-call hook.</param>
-/// <param name="BeforeToolCall">Optional pre-tool-call hook for validation and blocking.</param>
-/// <param name="BeforeToolCallTimeout">
+/// <param name="ToolAuditGate">Optional durable audit gate with blocking authority, invoked before tool-execution policy.</param>
+/// <param name="ToolExecutionPolicy">Optional tool-execution policy for validation and blocking.</param>
+/// <param name="ToolExecutionPolicyTimeout">
 /// Wall-clock budget for the pre-tool-call policy hook (#2518). Defaults to 15 seconds when null.
 /// A hook that exceeds the budget fails CLOSED: the tool call is blocked. Set to
 /// <see cref="System.Threading.Timeout.InfiniteTimeSpan"/> or a non-positive value to disable.
 /// </param>
-/// <param name="AfterToolCall">Optional post-tool-call hook for result transformation.</param>
+/// <param name="ToolResultTransformer">Optional tool-result transformer applied after execution.</param>
 /// <param name="GenerationSettings">The generation settings for model calls (temperature, maxTokens, sessionId, etc.).</param>
 /// <param name="SteeringMode">Controls steering message queue consumption (All or OneAtATime).</param>
 /// <param name="FollowUpMode">Controls follow-up message queue consumption (All or OneAtATime).</param>
 /// <param name="SessionId">Optional caller-provided session identifier (overrides GenerationSettings.SessionId if set).</param>
-/// <param name="OnDiagnostic">Optional callback for non-fatal runtime diagnostics.</param>
+/// <param name="DiagnosticObserver">Optional callback for non-fatal runtime diagnostics.</param>
 /// <param name="MaxRetryDelayMs">
 /// Maximum delay in milliseconds for transient retry backoff, and the ceiling applied to a
 /// server-supplied <c>Retry-After</c>. Must be greater than zero when set.
@@ -40,7 +40,7 @@ namespace BotNexus.Agent.Core.Configuration;
 /// <param name="ClaimAudit">
 /// Optional post-turn claim-auditor configuration (#1600). When null the auditor does not run.
 /// </param>
-/// <param name="MaybeCompactAsync">
+/// <param name="ContextCompactionService">
 /// Optional auto-compaction hook (#1710/#4379). Flows to the loop config and is awaited before
 /// each provider turn so a long dispatch re-checks the compaction threshold between turns. A typed
 /// <see cref="Loop.ProactiveCompactionException"/> fails closed when compaction was required.
@@ -59,12 +59,12 @@ namespace BotNexus.Agent.Core.Configuration;
 /// (#3162). Flows to the loop config. Null means the platform default; a non-positive value
 /// disables the backstop.
 /// </param>
-/// <param name="SanitizeToolResultText">
+/// <param name="ToolResultTextTransformer">
 /// Optional host-owned sanitizer for finalized generic tool text before budgeting and retention.
 /// </param>
-/// <param name="EvaluateRunCompletion">Optional authoritative host completion evaluator.</param>
+/// <param name="RunCompletionPolicy">Optional authoritative host completion evaluator.</param>
 /// <param name="MaxCompletionContinuations">Bound on automatic completion-gate continuation turns.</param>
-/// <param name="InvalidateProviderCredentials">
+/// <param name="CredentialInvalidationService">
 /// Optional host-owned credential invalidation invoked before one bounded authentication retry.
 /// </param>
 /// <remarks>
@@ -75,32 +75,32 @@ public record AgentOptions(
     AgentInitialState? InitialState,
     LlmModel Model,
     LlmClient LlmClient,
-    ConvertToLlmDelegate? ConvertToLlm,
-    TransformContextDelegate? TransformContext,
-    GetProviderExecutionOptionsDelegate GetProviderExecutionOptions,
-    GetMessagesDelegate? GetSteeringMessages,
-    GetMessagesDelegate? GetFollowUpMessages,
+    ProviderMessageTransformer? ProviderMessageTransformer,
+    AgentContextTransformer? AgentContextTransformer,
+    ProviderExecutionOptionsProvider ProviderExecutionOptionsProvider,
+    AgentMessageProvider? SteeringMessageProvider,
+    AgentMessageProvider? FollowUpMessageProvider,
     ToolExecutionMode ToolExecutionMode,
-    BeforeToolCallDelegate? BeforeToolCall,
-    AfterToolCallDelegate? AfterToolCall,
+    ToolExecutionPolicy? ToolExecutionPolicy,
+    ToolResultTransformer? ToolResultTransformer,
     GenerationOptions GenerationSettings,
     QueueMode SteeringMode,
     QueueMode FollowUpMode,
     string? SessionId = null,
-    Action<string>? OnDiagnostic = null,
+    Action<string>? DiagnosticObserver = null,
     int? MaxRetryDelayMs = AgentLoopConfig.DefaultMaxRetryDelayMs,
     TimeSpan? ToolTimeout = null,
     Diagnostics.ClaimAuditOptions? ClaimAudit = null,
-    Func<CancellationToken, Task<AgentContext?>>? MaybeCompactAsync = null,
-    TimeSpan? BeforeToolCallTimeout = null,
+    Func<CancellationToken, Task<AgentContext?>>? ContextCompactionService = null,
+    TimeSpan? ToolExecutionPolicyTimeout = null,
     Loop.IProviderSuspensionRegistry? SuspensionRegistry = null,
     string? AuthProfile = null,
     int? MaxToolOutputBytes = null,
-    BeforeToolAuditDelegate? BeforeToolAudit = null,
-    ToolCallDispositionDelegate? OnToolCallDisposition = null,
-    Func<string, string>? SanitizeToolResultText = null,
-    Loop.EvaluateRunCompletionDelegate? EvaluateRunCompletion = null,
+    ToolAuditGate? ToolAuditGate = null,
+    ToolExecutionDecisionObserver? ToolExecutionDecisionObserver = null,
+    Func<string, string>? ToolResultTextTransformer = null,
+    Loop.RunCompletionPolicy? RunCompletionPolicy = null,
     int MaxCompletionContinuations = 2,
-    InvalidateProviderCredentialsDelegate? InvalidateProviderCredentials = null,
+    CredentialInvalidationService? CredentialInvalidationService = null,
     Loop.IProviderRecoveryCoordinator? RecoveryCoordinator = null,
     TimeSpan? RecoveryAdmissionTimeout = null);

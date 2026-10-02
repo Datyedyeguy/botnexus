@@ -7,22 +7,24 @@ using AgentUserMessage = BotNexus.Agent.Core.Types.UserMessage;
 using ProviderUserMessage = BotNexus.Agent.Providers.Core.Models.UserMessage;
 
 /// <summary>
-/// Default conversion from agent timeline messages to provider messages.
+/// Default transformation from agent timeline messages to provider messages.
 /// </summary>
-public static class DefaultMessageConverter
+public static class DefaultProviderMessageTransformer
 {
     /// <summary>
-    /// Executes create.
+    /// Supplies the default message transformer for agent configuration when no custom transformer is provided.
     /// </summary>
-    /// <returns>The create result.</returns>
-    public static ConvertToLlmDelegate Create() => ConvertToLlm;
+    /// <returns>A delegate that transforms agent timeline messages into provider messages.</returns>
+    public static ProviderMessageTransformer Create() => TransformAsync;
 
     /// <summary>
-    /// Executes convert to llm.
+    /// Prepares the provider-visible timeline, preserving supported user, assistant, and tool messages
+    /// while excluding system messages and unsupported message shapes.
     /// </summary>
-    /// <param name="messages">The messages.</param>
-    /// <returns>The convert to llm result.</returns>
-    public static Task<IReadOnlyList<Message>> ConvertToLlm(
+    /// <param name="messages">The agent timeline to project; null or empty input produces an empty list.</param>
+    /// <param name="cancellationToken">The delegate's cancellation token; this synchronous transformation does not observe it.</param>
+    /// <returns>Provider messages in timeline order, with supported content and tool-call metadata preserved.</returns>
+    public static Task<IReadOnlyList<Message>> TransformAsync(
         IReadOnlyList<AgentMessage> messages,
         CancellationToken cancellationToken)
     {

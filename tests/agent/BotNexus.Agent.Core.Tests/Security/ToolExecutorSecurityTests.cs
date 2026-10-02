@@ -186,7 +186,7 @@ public sealed class ToolExecutorSecurityTests
     {
         var tool = CreateTool("echo", _ => Task.FromResult(new AgentToolResult([new AgentToolContent(AgentToolContentType.Text, "ok")])));
         var assistant = CreateAssistant(("tc1", "echo", "x"));
-        var config = TestHelpers.CreateTestConfig(beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(new BeforeToolCallResult(true, "blocked by policy")));
+        var config = TestHelpers.CreateTestConfig(beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(new ToolExecutionDecision(true, "blocked by policy")));
         var context = new AgentContext(null, [], [tool]);
 
         var results = await ToolExecutor.ExecuteAsync(context, assistant, config, _ => Task.CompletedTask, CancellationToken.None);

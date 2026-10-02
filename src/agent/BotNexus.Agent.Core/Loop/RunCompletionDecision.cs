@@ -86,4 +86,4 @@ public enum RunStopReason
     DurableAsyncWait,
 }
 
-public delegate Task<RunCompletionDecision> EvaluateRunCompletionDelegate(CancellationToken cancellationToken);
+public delegate Task<RunCompletionDecision> RunCompletionPolicy(CancellationToken cancellationToken);

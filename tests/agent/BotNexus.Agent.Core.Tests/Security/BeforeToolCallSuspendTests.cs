@@ -12,7 +12,7 @@ using Moq;
 namespace BotNexus.Agent.Core.Tests.Security;
 
 /// <summary>
-/// Issue #3356: the <c>BeforeToolCall</c> budget is armed with wall-clock
+/// Issue #3356: the <c>ToolExecutionPolicy</c> budget is armed with wall-clock
 /// <see cref="CancellationTokenSource.CancelAfter(TimeSpan)"/>, so a host suspend spanning the hook
 /// was charged against it — a 4h41m workstation sleep produced "hook timed out after 16945.1s
 /// (budget 15.0s)" and denied the tool call fail-closed.
@@ -124,7 +124,7 @@ public sealed class BeforeToolCallSuspendTests
             {
                 Interlocked.Increment(ref invocations);
                 await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
-                return new BeforeToolCallResult(Block: false);
+                return new ToolExecutionDecision(Block: false);
             },
             beforeToolCallTimeout: ShortBudget,
             onDiagnostic: diagnostics.Enqueue,
@@ -214,7 +214,7 @@ public sealed class BeforeToolCallSuspendTests
                 Interlocked.Increment(ref invocations);
                 hookEntered.TrySetResult(true);
                 await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
-                return new BeforeToolCallResult(Block: false);
+                return new ToolExecutionDecision(Block: false);
             },
             beforeToolCallTimeout: TimeSpan.FromSeconds(60),
             onDiagnostic: diagnostics.Enqueue,
@@ -253,7 +253,7 @@ public sealed class BeforeToolCallSuspendTests
             {
                 Interlocked.Increment(ref invocations);
                 await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
-                return new BeforeToolCallResult(Block: false);
+                return new ToolExecutionDecision(Block: false);
             },
             beforeToolCallTimeout: ShortBudget,
             suspendDetector: new AlwaysSuspendedDetector());

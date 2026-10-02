@@ -40,6 +40,10 @@ A policy receives an immutable, purpose-specific context and returns a typed
 decision. The loop remains the sole owner of execution and mutable agent state.
 Policies must not mutate `Agent`, `AgentState`, or `AgentLoopRunner` directly.
 
+**Future design example:** The interface and `RunCompletionContext` below are not
+current APIs. The current `RunCompletionPolicy` is a named delegate that receives
+only a `CancellationToken`.
+
 ```csharp
 public interface IRunCompletionPolicy
 {
@@ -149,6 +153,10 @@ different: each output becomes the next input rather than an aggregated vote.
 A transformer maps input data to output data while leaving the loop responsible
 for control flow.
 
+**Future design example:** This interface is not a current API. The current
+`ToolResultTransformer` remains a named delegate returning an optional
+`ToolResultTransformResult`.
+
 ```csharp
 public interface IToolResultTransformer
 {
@@ -191,33 +199,89 @@ Observer failures must not silently become policy decisions.
 ## Current API classification
 
 The following table classifies the behavior-bearing callback and interface seams,
-plus adjacent configuration whose role is otherwise easy to mistake. It is a
-migration guide, not a claim that current names already follow this convention.
+plus adjacent configuration whose role is otherwise easy to mistake. It reflects
+the rename-only core API; named delegates and raw callback signatures are retained.
 Ordinary scalar limits, modes, and timeouts remain configuration and are omitted
 unless they qualify the behavior of a listed seam.
 
-| Current extension point | Category | Target concept |
+| Current extension point | Category | Current responsibility |
 | --- | --- | --- |
-| `BeforeToolCallDelegate` | Policy | Tool execution policy |
-| `BeforeToolAuditDelegate` | Mixed service and policy | Its current contract combines durable audit work with authority to block; separate those responsibilities |
-| `AfterToolCallDelegate` | Transformer | Tool result transformer |
-| `EvaluateRunCompletionDelegate` | Policy | Run completion policy |
-| `ConvertToLlmDelegate` | Transformer | Provider-message transformer |
-| `TransformContextDelegate` | Transformer | Agent-context transformer |
-| `SanitizeToolResultText` | Transformer | Tool-result text transformer |
-| `GetMessagesDelegate` | Provider | Steering or follow-up message provider |
-| `GetProviderExecutionOptionsDelegate` | Provider | Provider execution-options provider |
-| `InvalidateProviderCredentialsDelegate` | Service | Credential invalidation service |
-| `ToolCallDispositionDelegate` | Observer | Tool execution decision observer or event |
-| `OnDiagnostic` | Observer | Diagnostic observer |
-| `MaybeCompactAsync` | Mixed policy and transformer | Separate compaction decision from context transformation if both remain necessary |
+| `ToolExecutionPolicy` | Policy | Tool execution decision after argument validation and audit |
+| `ToolAuditGate` | Mixed service and policy | Durable audit work that can block execution; these responsibilities are not yet separated |
+| `ToolResultTransformer` | Transformer | Optional replacement of tool-result content, details, or error status |
+| `RunCompletionPolicy` | Policy | Run completion decision; receives only a cancellation token |
+| `ProviderMessageTransformer` | Transformer | Agent messages to provider messages |
+| `AgentContextTransformer` | Transformer | Context-message transformation before provider invocation |
+| `ToolResultTextTransformer` | Transformer | Host-owned tool-result text sanitization; retained `Func<string, string>` |
+| `AgentMessageProvider` via `SteeringMessageProvider` / `FollowUpMessageProvider` | Provider | Steering or follow-up message lists |
+| `ProviderExecutionOptionsProvider` | Provider | Provider execution options on demand |
+| `CredentialInvalidationService` | Service | Host-owned credential invalidation |
+| `ToolExecutionDecisionObserver` | Observer | Notification of whether a tool call will execute |
+| `DiagnosticObserver` | Observer | Non-fatal diagnostics; retained `Action<string>` |
+| `ContextCompactionService` | Mixed policy and transformer | Compaction work, decision, and optional replacement context; these responsibilities are not yet separated |
 | `IProviderSuspensionRegistry` | Service | Provider suspension registry |
 | `IProviderRecoveryCoordinator` | Service | Provider recovery coordinator |
 | `IHostSuspendDetector` | Service | Host active-time service used to enforce elapsed-time policy correctly |
-| `RetryRandomSource` | Provider | Retry randomness provider |
+| `RetryRandomnessProvider` | Provider | Retry jitter randomness; retained `Func<double>` on `AgentLoopConfig` |
 | `ClaimAuditOptions` | Configuration | Claim-audit settings; the settings object is not itself an observer |
 | `SatelliteToolExecutionOptions` | Configuration | Satellite tool-execution settings |
 | `RecoveryAdmissionTimeout` | Configuration | Deadline qualifying provider recovery admission |
+| `ToolExecutionPolicyTimeout` / `DefaultToolExecutionPolicyTimeout` | Configuration | Tool execution policy budget and its 15-second default |
+
+### Rename-only old-to-new mapping
+
+These names change responsibility labels, not behavior. Named delegate contracts
+remain delegates; they have not become interfaces. Parameters, return shapes,
+null handling, sequencing, cancellation, and failure behavior are unchanged.
+The interface and rule-composition examples above remain **future design**, not
+available registration APIs. In particular, `ToolAuditGate` still combines audit
+work with blocking authority, and `ContextCompactionService` still combines
+compaction decisions and context replacement.
+
+| Previous delegate type | Current delegate type |
+| --- | --- |
+| `ConvertToLlmDelegate` | `ProviderMessageTransformer` |
+| `TransformContextDelegate` | `AgentContextTransformer` |
+| `GetProviderExecutionOptionsDelegate` | `ProviderExecutionOptionsProvider` |
+| `GetMessagesDelegate` | `AgentMessageProvider` |
+| `InvalidateProviderCredentialsDelegate` | `CredentialInvalidationService` |
+| `BeforeToolCallDelegate` | `ToolExecutionPolicy` |
+| `BeforeToolAuditDelegate` | `ToolAuditGate` |
+| `ToolCallDispositionDelegate` | `ToolExecutionDecisionObserver` |
+| `AfterToolCallDelegate` | `ToolResultTransformer` |
+| `EvaluateRunCompletionDelegate` | `RunCompletionPolicy` |
+
+| Previous core context/result type | Current core context/result type |
+| --- | --- |
+| `BeforeToolCallContext` | `ToolExecutionContext` |
+| `BeforeToolCallResult` | `ToolExecutionDecision` |
+| `AfterToolCallContext` | `ToolResultTransformContext` |
+| `AfterToolCallResult` | `ToolResultTransformResult` |
+
+| Previous core configuration member | Current core configuration member | Retained contract |
+| --- | --- | --- |
+| `ConvertToLlm` | `ProviderMessageTransformer` | `ProviderMessageTransformer` delegate |
+| `TransformContext` | `AgentContextTransformer` | `AgentContextTransformer` delegate |
+| `GetProviderExecutionOptions` | `ProviderExecutionOptionsProvider` | `ProviderExecutionOptionsProvider` delegate |
+| `GetSteeringMessages` | `SteeringMessageProvider` | `AgentMessageProvider` delegate |
+| `GetFollowUpMessages` | `FollowUpMessageProvider` | `AgentMessageProvider` delegate |
+| `BeforeToolCall` | `ToolExecutionPolicy` | `ToolExecutionPolicy` delegate |
+| `AfterToolCall` | `ToolResultTransformer` | `ToolResultTransformer` delegate |
+| `BeforeToolAudit` | `ToolAuditGate` | `ToolAuditGate` delegate |
+| `OnToolCallDisposition` | `ToolExecutionDecisionObserver` | `ToolExecutionDecisionObserver` delegate |
+| `EvaluateRunCompletion` | `RunCompletionPolicy` | `RunCompletionPolicy` delegate |
+| `InvalidateProviderCredentials` | `CredentialInvalidationService` | `CredentialInvalidationService` delegate |
+| `MaybeCompactAsync` | `ContextCompactionService` | `Func<CancellationToken, Task<AgentContext?>>` |
+| `OnDiagnostic` | `DiagnosticObserver` | `Action<string>` |
+| `SanitizeToolResultText` | `ToolResultTextTransformer` | `Func<string, string>` |
+| `RetryRandomSource` | `RetryRandomnessProvider` | `Func<double>` (`AgentLoopConfig` only) |
+| `BeforeToolCallTimeout` | `ToolExecutionPolicyTimeout` | Optional `TimeSpan` budget |
+| `DefaultBeforeToolCallTimeout` | `DefaultToolExecutionPolicyTimeout` | Static `TimeSpan` default on `AgentLoopConfig` |
+
+Optional callback properties retain their existing nullability. This mapping is
+limited to agent core contracts and configuration: gateway hook types and
+dispatcher APIs, wire event names such as `before_tool_call`, and gateway helper
+methods such as `CompactionService.MaybeCompactAsync` are unchanged.
 
 ## Adding an extension point
 

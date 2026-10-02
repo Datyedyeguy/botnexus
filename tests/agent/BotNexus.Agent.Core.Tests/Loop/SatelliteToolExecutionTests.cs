@@ -163,7 +163,7 @@ public sealed class SatelliteToolExecutionTests
         var baseConfig = CreateConfig(CreateScope(), remote, ["read"]);
         var config = baseConfig with
         {
-            AfterToolCall = (_, _) => Task.FromResult<AfterToolCallResult?>(new AfterToolCallResult(Details: replacementDetails))
+            ToolResultTransformer = (_, _) => Task.FromResult<ToolResultTransformResult?>(new ToolResultTransformResult(Details: replacementDetails))
         };
         var context = new AgentContext(null, [], [new TrackingTool("read")]);
 

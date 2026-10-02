@@ -16,7 +16,7 @@ using AgentUserMessage = BotNexus.Agent.Core.Types.UserMessage;
 /// dispatch (cron/autonomous follow-up loop) used to grow unbounded because
 /// ShouldCompact ran only pre-turn at the gateway; the agent loop never re-checked
 /// between provider turns. The optional best-effort
-/// <see cref="AgentLoopConfig.MaybeCompactAsync"/> is awaited after completed tool
+/// <see cref="AgentLoopConfig.ContextCompactionService"/> is awaited after completed tool
 /// results and before every provider call, so inner tool chains and outer follow-ups
 /// share one safe compaction boundary and the loop continues if the hook throws.
 /// </summary>
@@ -233,7 +233,7 @@ public class AgentLoopRunnerMaybeCompactTests
         var config = CreateConfig("maybe-compact-throws",
             _ => Task.FromException<AgentContext?>(new InvalidOperationException("compactor boom"))) with
         {
-            OnDiagnostic = diagnostics.Add
+            DiagnosticObserver = diagnostics.Add
         };
         var context = new AgentContext(null, [], []);
 
@@ -338,27 +338,27 @@ public class AgentLoopRunnerMaybeCompactTests
     private static AgentLoopConfig CreateConfig(
         string apiId,
         Func<CancellationToken, Task<AgentContext?>> maybeCompact,
-        GetMessagesDelegate? getFollowUpMessages = null)
+        AgentMessageProvider? getFollowUpMessages = null)
     {
         return new AgentLoopConfig(
             Model: TestHelpers.CreateTestModel(apiId),
             LlmClient: TestHelpers.CreateLlmClient(),
-            ConvertToLlm: (messages, _) => Task.FromResult<IReadOnlyList<Message>>(
+            ProviderMessageTransformer: (messages, _) => Task.FromResult<IReadOnlyList<Message>>(
                 messages.OfType<AgentUserMessage>()
                     .Select(m => (Message)new BotNexus.Agent.Providers.Core.Models.UserMessage(
                         new UserMessageContent(m.Content),
                         DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()))
                     .ToList()),
-            TransformContext: (messages, _) => Task.FromResult(messages),
-            GetProviderExecutionOptions: (_, _) => Task.FromResult<ProviderExecutionOptions?>(null),
-            GetSteeringMessages: null,
-            GetFollowUpMessages: getFollowUpMessages,
+            AgentContextTransformer: (messages, _) => Task.FromResult(messages),
+            ProviderExecutionOptionsProvider: (_, _) => Task.FromResult<ProviderExecutionOptions?>(null),
+            SteeringMessageProvider: null,
+            FollowUpMessageProvider: getFollowUpMessages,
             ToolExecutionMode: ToolExecutionMode.Sequential,
-            BeforeToolCall: null,
-            AfterToolCall: null,
+            ToolExecutionPolicy: null,
+            ToolResultTransformer: null,
             GenerationSettings: new GenerationOptions(),
             MaxRetryDelayMs: 1,
-            MaybeCompactAsync: maybeCompact);
+            ContextCompactionService: maybeCompact);
     }
 
     private static IDisposable RegisterProvider(string apiId,

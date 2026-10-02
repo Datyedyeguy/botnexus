@@ -12,7 +12,7 @@ using Moq;
 namespace BotNexus.Agent.Core.Tests.Security;
 
 /// <summary>
-/// Issue #2518: the <c>BeforeToolCall</c> pre-execution policy gate must be bounded by a
+/// Issue #2518: the <c>ToolExecutionPolicy</c> pre-execution policy gate must be bounded by a
 /// wall-clock budget, and a breach of that budget must fail CLOSED (the tool call is blocked,
 /// never executed). These tests assert the observable outcome — whether the tool actually ran
 /// and what result the loop produced — not merely that a timeout token fired.
@@ -39,7 +39,7 @@ public sealed class BeforeToolCallTimeoutTests
             beforeToolCall: async (_, ct) =>
             {
                 await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
-                return new BeforeToolCallResult(Block: false);
+                return new ToolExecutionDecision(Block: false);
             },
             beforeToolCallTimeout: ShortBudget);
 
@@ -66,7 +66,7 @@ public sealed class BeforeToolCallTimeoutTests
             beforeToolCall: async (_, ct) =>
             {
                 await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
-                return new BeforeToolCallResult(Block: false);
+                return new ToolExecutionDecision(Block: false);
             },
             beforeToolCallTimeout: ShortBudget,
             onDiagnostic: diagnostics.Enqueue);
@@ -121,7 +121,7 @@ public sealed class BeforeToolCallTimeoutTests
                 }
 
                 await releaseHook.Task.ConfigureAwait(false);
-                return new BeforeToolCallResult(Block: false);
+                return new ToolExecutionDecision(Block: false);
             },
             beforeToolCallTimeout: ShortBudget);
 
@@ -154,7 +154,7 @@ public sealed class BeforeToolCallTimeoutTests
         });
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(null),
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(null),
             beforeToolCallTimeout: TimeSpan.FromSeconds(5),
             onDiagnostic: diagnostics.Enqueue);
 
@@ -183,7 +183,7 @@ public sealed class BeforeToolCallTimeoutTests
 
         var config = TestHelpers.CreateTestConfig(
             beforeToolCall: (_, _) =>
-                Task.FromResult<BeforeToolCallResult?>(new BeforeToolCallResult(Block: true, Reason: "denied by policy")),
+                Task.FromResult<ToolExecutionDecision?>(new ToolExecutionDecision(Block: true, Reason: "denied by policy")),
             beforeToolCallTimeout: TimeSpan.FromSeconds(5));
 
         var results = await ExecuteAsync(config, tool, "dangerous", CancellationToken.None)
@@ -210,7 +210,7 @@ public sealed class BeforeToolCallTimeoutTests
             {
                 hookEntered.TrySetResult(true);
                 await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
-                return new BeforeToolCallResult(Block: false);
+                return new ToolExecutionDecision(Block: false);
             },
             // Budget far longer than the test, so any cancellation observed comes from the
             // ambient token rather than the hook budget.
@@ -285,12 +285,12 @@ public sealed class BeforeToolCallTimeoutTests
             beforeToolAudit: (_, _) =>
             {
                 order.Add("audit");
-                return Task.FromResult<BeforeToolCallResult?>(null);
+                return Task.FromResult<ToolExecutionDecision?>(null);
             },
             beforeToolCall: (_, _) =>
             {
                 order.Add("policy");
-                return Task.FromResult<BeforeToolCallResult?>(null);
+                return Task.FromResult<ToolExecutionDecision?>(null);
             });
 
         var results = await ExecuteAsync(config, tool, "read", CancellationToken.None);
@@ -308,7 +308,7 @@ public sealed class BeforeToolCallTimeoutTests
             beforeToolAudit: (_, _) =>
             {
                 auditCompleted = true;
-                return Task.FromResult<BeforeToolCallResult?>(null);
+                return Task.FromResult<ToolExecutionDecision?>(null);
             },
             beforeToolCall: async (_, ct) =>
             {
@@ -332,8 +332,8 @@ public sealed class BeforeToolCallTimeoutTests
         var dispositions = new List<bool>();
         var tool = CreateTool("read", _ => Task.FromResult(Ok("executed")));
         var config = TestHelpers.CreateTestConfig(
-            beforeToolAudit: (_, _) => Task.FromResult<BeforeToolCallResult?>(null),
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(new BeforeToolCallResult(Block: true, Reason: "denied")),
+            beforeToolAudit: (_, _) => Task.FromResult<ToolExecutionDecision?>(null),
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(new ToolExecutionDecision(Block: true, Reason: "denied")),
             onToolCallDisposition: (_, willExecute) => dispositions.Add(willExecute));
 
         var result = (await ExecuteAsync(config, tool, "read", CancellationToken.None)).ShouldHaveSingleItem();
@@ -348,7 +348,7 @@ public sealed class BeforeToolCallTimeoutTests
         var dispositions = new List<bool>();
         var tool = CreateTool("read", _ => Task.FromResult(Ok("executed")));
         var config = TestHelpers.CreateTestConfig(
-            beforeToolAudit: (_, _) => Task.FromResult<BeforeToolCallResult?>(null),
+            beforeToolAudit: (_, _) => Task.FromResult<ToolExecutionDecision?>(null),
             beforeToolCall: async (_, ct) =>
             {
                 await Task.Delay(Timeout.InfiniteTimeSpan, ct).ConfigureAwait(false);
@@ -367,7 +367,7 @@ public sealed class BeforeToolCallTimeoutTests
     [Fact]
     public void DefaultBudget_IsFifteenSeconds()
     {
-        AgentLoopConfig.DefaultBeforeToolCallTimeout.ShouldBe(TimeSpan.FromSeconds(15));
+        AgentLoopConfig.DefaultToolExecutionPolicyTimeout.ShouldBe(TimeSpan.FromSeconds(15));
     }
 
     private static Task<IReadOnlyList<ToolResultAgentMessage>> ExecuteAsync(

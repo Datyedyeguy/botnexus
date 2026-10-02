@@ -56,19 +56,19 @@ public class AgentLoopRunnerTests
         transformedSnapshots.Distinct(StringComparer.Ordinal).ShouldHaveSingleItem();
     }
 
-    private static AgentLoopConfig CreateConfig(TransformContextDelegate transformContext)
+    private static AgentLoopConfig CreateConfig(AgentContextTransformer transformContext)
     {
         return new AgentLoopConfig(
             Model: TestHelpers.CreateTestModel("test-api-retry"),
             LlmClient: TestHelpers.CreateLlmClient(),
-            ConvertToLlm: (messages, _) => Task.FromResult<IReadOnlyList<Message>>(ToProviderMessages(messages)),
-            TransformContext: transformContext,
-            GetProviderExecutionOptions: (_, _) => Task.FromResult<ProviderExecutionOptions?>(null),
-            GetSteeringMessages: null,
-            GetFollowUpMessages: null,
+            ProviderMessageTransformer: (messages, _) => Task.FromResult<IReadOnlyList<Message>>(ToProviderMessages(messages)),
+            AgentContextTransformer: transformContext,
+            ProviderExecutionOptionsProvider: (_, _) => Task.FromResult<ProviderExecutionOptions?>(null),
+            SteeringMessageProvider: null,
+            FollowUpMessageProvider: null,
             ToolExecutionMode: ToolExecutionMode.Sequential,
-            BeforeToolCall: null,
-            AfterToolCall: null,
+            ToolExecutionPolicy: null,
+            ToolResultTransformer: null,
             GenerationSettings: new GenerationOptions());
     }
 

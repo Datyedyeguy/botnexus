@@ -27,7 +27,7 @@ public sealed class AuditHooks
         _startTimes[toolCallId] = DateTimeOffset.UtcNow;
     }
 
-    public Task<AfterToolCallResult?> AuditAsync(AfterToolCallContext context)
+    public Task<ToolResultTransformResult?> AuditAsync(ToolResultTransformContext context)
     {
         ArgumentNullException.ThrowIfNull(context);
 
@@ -41,7 +41,7 @@ public sealed class AuditHooks
                 $"[audit] tool={context.ToolCallRequest.Name} status={status} durationMs={durationMs} calls={count}");
         }
 
-        return Task.FromResult<AfterToolCallResult?>(null);
+        return Task.FromResult<ToolResultTransformResult?>(null);
     }
 
     private long ResolveDurationMs(string toolCallId)

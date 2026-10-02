@@ -339,10 +339,10 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
             cancellationToken).ConfigureAwait(false);
 
         var hookDispatcher = _serviceProvider.GetService<IHookDispatcher>();
-        BeforeToolAuditDelegate? beforeToolAudit = null;
-        BeforeToolCallDelegate? beforeToolCall = null;
-        ToolCallDispositionDelegate? onToolCallDisposition = null;
-        AfterToolCallDelegate? afterToolCall = null;
+        ToolAuditGate? beforeToolAudit = null;
+        ToolExecutionPolicy? beforeToolCall = null;
+        ToolExecutionDecisionObserver? onToolCallDisposition = null;
+        ToolResultTransformer? afterToolCall = null;
         // #2615: the fail-closed tool-audit write-ahead. Pre-#2615 this existed only for sub-agents
         // (#2113), so a top-level agent's tool call was never written ahead and a crash mid-tool left
         // no evidence the tool had been invoked at all. It now runs for EVERY agent, and it is the
@@ -377,7 +377,7 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
                     ctx.ValidatedArgs);
                 if (classificationPrompt is not null)
                 {
-                    return new BotNexus.Agent.Core.Hooks.BeforeToolCallResult(
+                    return new BotNexus.Agent.Core.Hooks.ToolExecutionDecision(
                         Block: true,
                         Reason: classificationPrompt);
                 }
@@ -431,7 +431,7 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
                 var denied = results.FirstOrDefault(r => r.Denied);
                 if (denied is not null)
                 {
-                    return new BotNexus.Agent.Core.Hooks.BeforeToolCallResult(
+                    return new BotNexus.Agent.Core.Hooks.ToolExecutionDecision(
                         Block: true,
                         Reason: denied.DenyReason);
                 }
@@ -676,7 +676,7 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
             _logger.LogDebug(ex, "Could not resolve auth profile id for provider '{Provider}'.", model.Provider);
         }
 
-        BotNexus.Agent.Core.Loop.EvaluateRunCompletionDelegate? evaluateRunCompletion = null;
+        BotNexus.Agent.Core.Loop.RunCompletionPolicy? evaluateRunCompletion = null;
         var completionConversationStore = _serviceProvider.GetService<IConversationStore>();
         var completionConversationId = completionConversationStore is null
             ? null
@@ -700,20 +700,20 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
                 Messages: initialMessages),
             Model: model,
             LlmClient: _llmClient,
-            ConvertToLlm: null,
-            TransformContext: null,
-            GetProviderExecutionOptions: async (provider, cancellationToken) =>
+            ProviderMessageTransformer: null,
+            AgentContextTransformer: null,
+            ProviderExecutionOptionsProvider: async (provider, cancellationToken) =>
                 await _authManager.CreateExecutionOptionsAsync(provider, cancellationToken: cancellationToken).ConfigureAwait(false),
-            InvalidateProviderCredentials: (_, _) =>
+            CredentialInvalidationService: (_, _) =>
             {
                 _authManager.InvalidateCache();
                 return Task.CompletedTask;
             },
-            GetSteeringMessages: null,
-            GetFollowUpMessages: null,
+            SteeringMessageProvider: null,
+            FollowUpMessageProvider: null,
             ToolExecutionMode: ToolExecutionMode.Parallel,
-            BeforeToolCall: beforeToolCall,
-            AfterToolCall: afterToolCall,
+            ToolExecutionPolicy: beforeToolCall,
+            ToolResultTransformer: afterToolCall,
             GenerationSettings: new GenerationOptions
             {
                 // Parse per-agent cacheRetentionMode string ("none", "short", "long").
@@ -742,13 +742,13 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
             // means work was silently lost, but none of them failed the turn. Information would
             // bury them in the normal hot-path stream; Error would page on a condition the agent
             // already recovered from.
-            OnDiagnostic: diagnostic => _logger.LogWarning(
+            DiagnosticObserver: diagnostic => _logger.LogWarning(
                 "Agent diagnostic for '{AgentId}' session '{SessionId}': {Diagnostic}",
                 descriptor.AgentId.Value, context.SessionId.Value, diagnostic),
             ToolTimeout: ResolveToolTimeout(descriptor),
             ClaimAudit: ResolveClaimAuditOptions(platformConfig?.Value.Gateway?.ClaimAudit),
-            MaybeCompactAsync: maybeCompactAsync,
-            EvaluateRunCompletion: evaluateRunCompletion,
+            ContextCompactionService: maybeCompactAsync,
+            RunCompletionPolicy: evaluateRunCompletion,
             // #3015: the exhaustion lane's memory. The registry is a gateway singleton so a
             // suspension recorded on one turn is still visible on the next -- pre-#3015 all retry
             // state lived in a local attempt counter and died with the call, which is precisely why
@@ -767,9 +767,9 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
             // result seam but cannot depend upward on Gateway.Security, so thread the base redactor
             // into that seam. Do not use RedactForExternalDelivery: model-visible tool results must
             // retain actionable local login instructions.
-            SanitizeToolResultText: (_serviceProvider.GetService<ISecretRedactor>() ?? new SecretRedactor()).Redact,
-            BeforeToolAudit: beforeToolAudit,
-            OnToolCallDisposition: onToolCallDisposition);
+            ToolResultTextTransformer: (_serviceProvider.GetService<ISecretRedactor>() ?? new SecretRedactor()).Redact,
+            ToolAuditGate: beforeToolAudit,
+            ToolExecutionDecisionObserver: onToolCallDisposition);
 
         var agent = new BotNexus.Agent.Core.Agent(options);
 

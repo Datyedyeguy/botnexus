@@ -431,7 +431,7 @@ public sealed class InProcessIsolationStrategyTests
             CreateDescriptor(),
             new AgentExecutionContext { SessionId = sessionId });
 
-        var compacted = await GetAgentOptions(handle).MaybeCompactAsync!(CancellationToken.None);
+        var compacted = await GetAgentOptions(handle).ContextCompactionService!(CancellationToken.None);
 
         compacted.ShouldNotBeNull();
         compacted.SystemPrompt.ShouldNotBeNull();
@@ -498,7 +498,7 @@ public sealed class InProcessIsolationStrategyTests
             CreateDescriptor(),
             new AgentExecutionContext { SessionId = sessionId });
 
-        var compacted = await GetAgentOptions(handle).MaybeCompactAsync!(CancellationToken.None);
+        var compacted = await GetAgentOptions(handle).ContextCompactionService!(CancellationToken.None);
 
         compacted.ShouldNotBeNull();
         compacted.SystemPrompt.ShouldNotBeNull();
@@ -547,7 +547,7 @@ public sealed class InProcessIsolationStrategyTests
             CreateDescriptor(),
             new AgentExecutionContext { SessionId = sessionId });
 
-        Func<Task> act = async () => _ = await GetAgentOptions(handle).MaybeCompactAsync!(CancellationToken.None);
+        Func<Task> act = async () => _ = await GetAgentOptions(handle).ContextCompactionService!(CancellationToken.None);
 
         var exception = await act.ShouldThrowAsync<ProactiveCompactionException>();
         exception.Retryable.ShouldBeTrue();

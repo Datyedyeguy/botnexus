@@ -13,7 +13,7 @@ namespace BotNexus.Agent.Core.Tests.Security;
 
 /// <summary>
 /// Issue #2476: an automated approval decision that is not an <b>unambiguous allow</b> must fail
-/// closed. Before this change <see cref="BeforeToolCallResult"/> could only say "block" or
+/// closed. Before this change <see cref="ToolExecutionDecision"/> could only say "block" or
 /// "not block", so an approval provider with no clear verdict - a reviewer quorum that split, a
 /// policy engine that returned no opinion, an aggregation race between concurrent reviewers - had
 /// no way to express its ambiguity and was silently coerced into ALLOW.
@@ -38,8 +38,8 @@ public sealed class BeforeToolCallAmbiguityTests
         });
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(
-                BeforeToolCallResult.Indeterminate()));
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(
+                ToolExecutionDecision.Indeterminate()));
 
         var results = await ExecuteAsync(config, tool, "dangerous", CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(10));
@@ -60,8 +60,8 @@ public sealed class BeforeToolCallAmbiguityTests
         var tool = CreateTool("dangerous", _ => Task.FromResult(Ok("executed")));
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(
-                BeforeToolCallResult.Indeterminate("reviewer quorum split")));
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(
+                ToolExecutionDecision.Indeterminate("reviewer quorum split")));
 
         var results = await ExecuteAsync(config, tool, "dangerous", CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(10));
@@ -85,8 +85,8 @@ public sealed class BeforeToolCallAmbiguityTests
         });
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(
-                BeforeToolCallResult.Indeterminate()));
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(
+                ToolExecutionDecision.Indeterminate()));
 
         var results = await ExecuteAsync(config, tool, "dangerous", CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(10));
@@ -113,8 +113,8 @@ public sealed class BeforeToolCallAmbiguityTests
         });
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(
-                new BeforeToolCallResult(Block: false)));
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(
+                new ToolExecutionDecision(Block: false)));
 
         var results = await ExecuteAsync(config, tool, "safe", CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(10));
@@ -136,7 +136,7 @@ public sealed class BeforeToolCallAmbiguityTests
         });
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(null));
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(null));
 
         var results = await ExecuteAsync(config, tool, "safe", CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(10));
@@ -158,8 +158,8 @@ public sealed class BeforeToolCallAmbiguityTests
         });
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(
-                new BeforeToolCallResult(Block: true, Reason: "denied by policy")));
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(
+                new ToolExecutionDecision(Block: true, Reason: "denied by policy")));
 
         var results = await ExecuteAsync(config, tool, "dangerous", CancellationToken.None)
             .WaitAsync(TimeSpan.FromSeconds(10));
@@ -181,7 +181,7 @@ public sealed class BeforeToolCallAmbiguityTests
     [Trait("Category", "Security")]
     public void IsUnambiguousAllow_OnlyWhenNotBlockedAndDeterminate(bool block, bool indeterminate, bool expected)
     {
-        var result = new BeforeToolCallResult(block) { IsIndeterminate = indeterminate };
+        var result = new ToolExecutionDecision(block) { IsIndeterminate = indeterminate };
         result.IsUnambiguousAllow.ShouldBe(expected);
     }
 
@@ -237,7 +237,7 @@ public sealed class BeforeToolCallAmbiguityTests
 
                 verdicts.ShouldBe([true, false]);
                 Interlocked.Increment(ref splitVerdicts);
-                return BeforeToolCallResult.Indeterminate("reviewers disagreed");
+                return ToolExecutionDecision.Indeterminate("reviewers disagreed");
             },
             beforeToolCallTimeout: TimeSpan.FromSeconds(30));
 
@@ -279,8 +279,8 @@ public sealed class BeforeToolCallAmbiguityTests
         var errors = 0;
 
         var config = TestHelpers.CreateTestConfig(
-            beforeToolCall: (_, _) => Task.FromResult<BeforeToolCallResult?>(
-                BeforeToolCallResult.Indeterminate("no quorum")),
+            beforeToolCall: (_, _) => Task.FromResult<ToolExecutionDecision?>(
+                ToolExecutionDecision.Indeterminate("no quorum")),
             beforeToolCallTimeout: TimeSpan.FromSeconds(30));
 
         await Parallel.ForEachAsync(

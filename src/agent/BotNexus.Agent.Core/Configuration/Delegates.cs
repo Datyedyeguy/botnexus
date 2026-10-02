@@ -22,7 +22,7 @@ namespace BotNexus.Agent.Core.Configuration;
 /// Throwing interrupts the low-level agent loop without producing a normal event sequence.
 /// </para>
 /// </remarks>
-public delegate Task<IReadOnlyList<Message>> ConvertToLlmDelegate(
+public delegate Task<IReadOnlyList<Message>> ProviderMessageTransformer(
     IReadOnlyList<AgentMessage> messages,
     CancellationToken cancellationToken);
 
@@ -36,7 +36,7 @@ public delegate Task<IReadOnlyList<Message>> ConvertToLlmDelegate(
 /// Use to filter, summarize, or rewrite messages before they reach the LLM.
 /// Contract: must not throw. Return the original list or a safe fallback.
 /// </remarks>
-public delegate Task<IReadOnlyList<AgentMessage>> TransformContextDelegate(
+public delegate Task<IReadOnlyList<AgentMessage>> AgentContextTransformer(
     IReadOnlyList<AgentMessage> messages,
     CancellationToken cancellationToken);
 
@@ -50,7 +50,7 @@ public delegate Task<IReadOnlyList<AgentMessage>> TransformContextDelegate(
 /// Called before each LLM invocation. The result may carry credentials, transport policy,
 /// provider retry settings, or wire timeouts. Semantic generation controls do not belong here.
 /// </remarks>
-public delegate Task<ProviderExecutionOptions?> GetProviderExecutionOptionsDelegate(string provider, CancellationToken cancellationToken);
+public delegate Task<ProviderExecutionOptions?> ProviderExecutionOptionsProvider(string provider, CancellationToken cancellationToken);
 
 /// <summary>
 /// Invalidates host-owned provider credentials after an authentication rejection.
@@ -61,7 +61,7 @@ public delegate Task<ProviderExecutionOptions?> GetProviderExecutionOptionsDeleg
 /// The agent layer cannot depend on the gateway credential store. Hosts that cache credentials use
 /// this seam to invalidate that cache before the loop re-resolves execution options exactly once.
 /// </remarks>
-public delegate Task InvalidateProviderCredentialsDelegate(string provider, CancellationToken cancellationToken);
+public delegate Task CredentialInvalidationService(string provider, CancellationToken cancellationToken);
 
 /// <summary>
 /// Produces contextual message lists such as steering or follow-up messages.
@@ -72,35 +72,37 @@ public delegate Task InvalidateProviderCredentialsDelegate(string provider, Canc
 /// Called at turn boundaries (steering) or run completion (follow-up).
 /// Return an empty list if no messages are available. Must not throw.
 /// </remarks>
-public delegate Task<IReadOnlyList<AgentMessage>> GetMessagesDelegate(CancellationToken cancellationToken);
+public delegate Task<IReadOnlyList<AgentMessage>> AgentMessageProvider(CancellationToken cancellationToken);
 
 /// <summary>
-/// Runs before a tool call executes.
+/// Evaluates whether a validated tool call may execute.
 /// </summary>
-/// <param name="context">The before-tool-call context.</param>
+/// <param name="context">The tool-execution policy context.</param>
 /// <param name="cancellationToken">The cancellation token.</param>
-/// <returns>An optional interception result.</returns>
+/// <returns>An optional tool-execution decision.</returns>
 /// <remarks>
 /// Use to validate, block, or log tool calls before execution.
-/// Return BeforeToolCallResult with Block=true to prevent execution.
+/// Return ToolExecutionDecision with Block=true to prevent execution.
 /// Must not throw — exceptions are logged and ignored.
 /// </remarks>
-public delegate Task<BeforeToolCallResult?> BeforeToolCallDelegate(
-    BeforeToolCallContext context,
+public delegate Task<ToolExecutionDecision?> ToolExecutionPolicy(
+    ToolExecutionContext context,
     CancellationToken cancellationToken);
 
 /// <summary>
-/// Runs durable audit work before the policy-only <see cref="BeforeToolCallDelegate"/> gate.
+/// Runs durable audit work before the policy-only <see cref="ToolExecutionPolicy"/> gate.
 /// </summary>
 /// <param name="context">The validated tool-call context to audit.</param>
 /// <param name="cancellationToken">The ambient turn cancellation token.</param>
-/// <returns>An optional interception result.</returns>
+/// <returns>An optional blocking audit decision.</returns>
 /// <remarks>
 /// The delegate owns its persistence deadline. Returning a blocking result prevents execution;
 /// returning null permits policy evaluation to continue.
+/// This legacy gate still combines durable service work with blocking policy authority;
+/// renaming it does not separate those responsibilities.
 /// </remarks>
-public delegate Task<BeforeToolCallResult?> BeforeToolAuditDelegate(
-    BeforeToolCallContext context,
+public delegate Task<ToolExecutionDecision?> ToolAuditGate(
+    ToolExecutionContext context,
     CancellationToken cancellationToken);
 
 /// <summary>
@@ -108,19 +110,19 @@ public delegate Task<BeforeToolCallResult?> BeforeToolAuditDelegate(
 /// </summary>
 /// <param name="toolCallId">Provider tool-call correlation id.</param>
 /// <param name="willExecute">True only after the policy gate permits execution.</param>
-public delegate void ToolCallDispositionDelegate(string toolCallId, bool willExecute);
+public delegate void ToolExecutionDecisionObserver(string toolCallId, bool willExecute);
 
 /// <summary>
-/// Runs after a tool call executes.
+/// Transforms a completed tool result before it reaches the provider.
 /// </summary>
-/// <param name="context">The after-tool-call context.</param>
+/// <param name="context">The tool-result transformation context.</param>
 /// <param name="cancellationToken">The cancellation token.</param>
 /// <returns>An optional post-processing result.</returns>
 /// <remarks>
 /// Use to transform, filter, or override tool results before they reach the LLM.
-/// Return AfterToolCallResult to replace Content, Details, or IsError.
+/// Return ToolResultTransformResult to replace Content, Details, or IsError.
 /// Must not throw — exceptions are logged and ignored.
 /// </remarks>
-public delegate Task<AfterToolCallResult?> AfterToolCallDelegate(
-    AfterToolCallContext context,
+public delegate Task<ToolResultTransformResult?> ToolResultTransformer(
+    ToolResultTransformContext context,
     CancellationToken cancellationToken);

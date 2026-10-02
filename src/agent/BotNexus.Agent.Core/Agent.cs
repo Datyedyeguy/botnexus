@@ -16,13 +16,13 @@ namespace BotNexus.Agent.Core;
 /// </remarks>
 public sealed class Agent
 {
-    private static readonly TransformContextDelegate IdentityTransformContext =
+    private static readonly AgentContextTransformer IdentityTransformContext =
         (messages, _) => Task.FromResult(messages);
 
     private readonly AgentOptions _options;
-    private readonly ConvertToLlmDelegate _convertToLlm;
+    private readonly ProviderMessageTransformer _convertToLlm;
     private readonly AgentState _state;
-    private readonly TransformContextDelegate _transformContext;
+    private readonly AgentContextTransformer _transformContext;
     private readonly PendingMessageQueue _steeringQueue;
     private readonly PendingMessageQueue _followUpQueue;
     private readonly SemaphoreSlim _runLock = new(1, 1);
@@ -56,8 +56,8 @@ public sealed class Agent
         }
 
         _options = options;
-        _convertToLlm = options.ConvertToLlm ?? DefaultMessageConverter.ConvertToLlm;
-        _transformContext = options.TransformContext ?? IdentityTransformContext;
+        _convertToLlm = options.ProviderMessageTransformer ?? DefaultProviderMessageTransformer.TransformAsync;
+        _transformContext = options.AgentContextTransformer ?? IdentityTransformContext;
 
         var initial = options.InitialState;
         _state = new AgentState
@@ -618,7 +618,7 @@ public sealed class Agent
             }
             catch (Exception listenerEx)
             {
-                _options.OnDiagnostic?.Invoke($"Listener error during agent_end: {listenerEx.Message}");
+                _options.DiagnosticObserver?.Invoke($"Listener error during agent_end: {listenerEx.Message}");
             }
 
             return [abortedMessage];
@@ -655,7 +655,7 @@ public sealed class Agent
             }
             catch (Exception listenerEx)
             {
-                _options.OnDiagnostic?.Invoke($"Listener error during agent_end: {listenerEx.Message}");
+                _options.DiagnosticObserver?.Invoke($"Listener error during agent_end: {listenerEx.Message}");
             }
 
             return [failureMessage];
@@ -714,44 +714,44 @@ public sealed class Agent
             _options.LlmClient,
             _convertToLlm,
             _transformContext,
-            _options.GetProviderExecutionOptions,
-            BuildQueueDelegate(_steeringQueue, _options.GetSteeringMessages),
-            BuildQueueDelegate(_followUpQueue, _options.GetFollowUpMessages),
+            _options.ProviderExecutionOptionsProvider,
+            BuildQueueDelegate(_steeringQueue, _options.SteeringMessageProvider),
+            BuildQueueDelegate(_followUpQueue, _options.FollowUpMessageProvider),
             _options.ToolExecutionMode,
-            _options.BeforeToolCall,
-            _options.AfterToolCall,
+            _options.ToolExecutionPolicy,
+            _options.ToolResultTransformer,
             generationSettings,
             _options.MaxRetryDelayMs,
             skipInitialSteeringPoll,
             _options.ToolTimeout ?? TimeSpan.FromSeconds(120),
             _options.ClaimAudit,
             BuildMaybeCompactDelegate(),
-            _options.BeforeToolCallTimeout,
-            _options.OnDiagnostic,
+            _options.ToolExecutionPolicyTimeout,
+            _options.DiagnosticObserver,
             _options.SuspensionRegistry,
             _options.AuthProfile,
-            RetryRandomSource: null,
+            RetryRandomnessProvider: null,
             MaxToolOutputBytes: _options.MaxToolOutputBytes,
-            BeforeToolAudit: _options.BeforeToolAudit,
-            OnToolCallDisposition: _options.OnToolCallDisposition,
-            SanitizeToolResultText: _options.SanitizeToolResultText,
-            EvaluateRunCompletion: _options.EvaluateRunCompletion,
+            ToolAuditGate: _options.ToolAuditGate,
+            ToolExecutionDecisionObserver: _options.ToolExecutionDecisionObserver,
+            ToolResultTextTransformer: _options.ToolResultTextTransformer,
+            RunCompletionPolicy: _options.RunCompletionPolicy,
             MaxCompletionContinuations: _options.MaxCompletionContinuations,
-            InvalidateProviderCredentials: _options.InvalidateProviderCredentials,
+            CredentialInvalidationService: _options.CredentialInvalidationService,
             RecoveryCoordinator: _options.RecoveryCoordinator,
             RecoveryAdmissionTimeout: _options.RecoveryAdmissionTimeout);
     }
 
     private Func<CancellationToken, Task<AgentContext?>>? BuildMaybeCompactDelegate()
     {
-        if (_options.MaybeCompactAsync is null)
+        if (_options.ContextCompactionService is null)
         {
             return null;
         }
 
         return async cancellationToken =>
         {
-            var refreshed = await _options.MaybeCompactAsync(cancellationToken).ConfigureAwait(false);
+            var refreshed = await _options.ContextCompactionService(cancellationToken).ConfigureAwait(false);
             if (refreshed is null)
             {
                 return null;
@@ -773,9 +773,9 @@ public sealed class Agent
         return source with { };
     }
 
-    private static GetMessagesDelegate BuildQueueDelegate(
+    private static AgentMessageProvider BuildQueueDelegate(
         PendingMessageQueue queue,
-        GetMessagesDelegate? extra)
+        AgentMessageProvider? extra)
     {
         return async cancellationToken =>
         {
@@ -829,7 +829,7 @@ public sealed class Agent
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
-                _options.OnDiagnostic?.Invoke($"Listener threw: {ex.Message}");
+                _options.DiagnosticObserver?.Invoke($"Listener threw: {ex.Message}");
             }
         }
     }

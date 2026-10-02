@@ -9,12 +9,12 @@ using ProviderUserMessage = BotNexus.Agent.Providers.Core.Models.UserMessage;
 using ProviderAssistantMessage = BotNexus.Agent.Providers.Core.Models.AssistantMessage;
 using ProviderToolResultMessage = BotNexus.Agent.Providers.Core.Models.ToolResultMessage;
 
-public class DefaultMessageConverterTests
+public class DefaultProviderMessageTransformerTests
 {
     [Fact]
     public async Task Create_ConvertsUserMessage()
     {
-        var converter = DefaultMessageConverter.Create();
+        var converter = DefaultProviderMessageTransformer.Create();
 
         var result = await converter([new AgentUserMessage("hello")], CancellationToken.None);
 
@@ -26,7 +26,7 @@ public class DefaultMessageConverterTests
     [Fact]
     public async Task Create_ConvertsAssistantMessage()
     {
-        var converter = DefaultMessageConverter.Create();
+        var converter = DefaultProviderMessageTransformer.Create();
         var message = new AssistantAgentMessage(
             Content: "assistant text",
             ContentBlocks:
@@ -54,7 +54,7 @@ public class DefaultMessageConverterTests
     [Fact]
     public async Task Create_ConvertsToolResultMessage()
     {
-        var converter = DefaultMessageConverter.Create();
+        var converter = DefaultProviderMessageTransformer.Create();
         var message = new ToolResultAgentMessage(
             ToolCallId: "call-1",
             ToolName: "calculate",
@@ -73,7 +73,7 @@ public class DefaultMessageConverterTests
     [Fact]
     public async Task Create_FiltersOutSystemMessages()
     {
-        var converter = DefaultMessageConverter.Create();
+        var converter = DefaultProviderMessageTransformer.Create();
 
         var result = await converter([new SystemAgentMessage("system context")], CancellationToken.None);
 
@@ -83,7 +83,7 @@ public class DefaultMessageConverterTests
     [Fact]
     public async Task Create_ReturnsEmptyForEmptyOrNullMessages()
     {
-        var converter = DefaultMessageConverter.Create();
+        var converter = DefaultProviderMessageTransformer.Create();
 
         var emptyResult = await converter([], CancellationToken.None);
         var nullResult = await converter(null!, CancellationToken.None);
@@ -95,7 +95,7 @@ public class DefaultMessageConverterTests
     [Fact]
     public async Task Create_ConvertsMixedMessageTypes()
     {
-        var converter = DefaultMessageConverter.Create();
+        var converter = DefaultProviderMessageTransformer.Create();
         IReadOnlyList<AgentMessage> messages =
         [
             new AgentUserMessage("user"),
@@ -115,7 +115,7 @@ public class DefaultMessageConverterTests
     [Fact]
     public async Task Create_SkipsUnsupportedMessageShapes()
     {
-        var converter = DefaultMessageConverter.Create();
+        var converter = DefaultProviderMessageTransformer.Create();
         IReadOnlyList<AgentMessage> messages = [new UnknownAgentMessage(), new AgentUserMessage("ok")];
 
         var result = await converter(messages, CancellationToken.None);
