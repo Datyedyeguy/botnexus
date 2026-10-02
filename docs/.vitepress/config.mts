@@ -302,6 +302,7 @@ export default defineConfig({
             collapsed: true,
             items: [
               { text: "Agent Execution", link: "/development/agent-execution" },
+              { text: "Agent Core Extension Points", link: "/development/agent-core-extension-points" },
               { text: "Message Flow", link: "/development/message-flow" },
               { text: "Inbound Delivery Modes", link: "/development/inbound-delivery-modes" },
               { text: "LLM Request Lifecycle", link: "/development/llm-request-lifecycle" },
