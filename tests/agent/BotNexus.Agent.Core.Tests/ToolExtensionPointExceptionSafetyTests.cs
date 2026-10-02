@@ -4,12 +4,12 @@ using BotNexus.Agent.Core.Types;
 
 namespace BotNexus.Agent.Core.Tests;
 
-public sealed class HookExceptionSafetyTests
+public sealed class ToolExtensionPointExceptionSafetyTests
 {
     private const string HookApi = "hook-safety-api";
 
     [Fact]
-    public async Task PromptAsync_WhenBeforeToolCallHookThrows_BlocksToolCallGracefully()
+    public async Task PromptAsync_WhenToolExecutionPolicyThrows_BlocksToolCallGracefully()
     {
         using var provider = RegisterToolCallThenStopProvider();
         var initialState = new AgentInitialState(
@@ -31,7 +31,7 @@ public sealed class HookExceptionSafetyTests
     }
 
     [Fact]
-    public async Task PromptAsync_WhenAfterToolCallHookThrows_ReturnsOriginalToolResult()
+    public async Task PromptAsync_WhenToolResultTransformerThrows_ReturnsOriginalToolResult()
     {
         using var provider = RegisterToolCallThenStopProvider();
         var initialState = new AgentInitialState(

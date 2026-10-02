@@ -562,7 +562,7 @@ public class AgentTests
     }
 
     [Fact]
-    public async Task PromptAsync_WhenTransformContextIsNull_DoesNotCrash()
+    public async Task PromptAsync_WhenAgentContextTransformerIsNull_DoesNotCrash()
     {
         using var provider = RegisterDefaultProvider();
         var options = TestHelpers.CreateTestOptions(model: TestHelpers.CreateTestModel("test-api"))
@@ -578,7 +578,7 @@ public class AgentTests
     }
 
     [Fact]
-    public async Task PromptAsync_WhenConvertToLlmIsNull_UsesDefaultMessageConverter()
+    public async Task PromptAsync_WhenProviderMessageTransformerIsNull_UsesDefaultProviderMessageTransformer()
     {
         using var provider = RegisterDefaultProvider();
         var options = TestHelpers.CreateTestOptions(model: TestHelpers.CreateTestModel("test-api"))

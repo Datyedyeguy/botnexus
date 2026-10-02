@@ -34,7 +34,7 @@ namespace BotNexus.Agent.Core.Tests.Security;
 /// red. A change that deleted the budget altogether fails the former.
 /// </para>
 /// </remarks>
-public sealed class BeforeToolCallSuspendTests
+public sealed class ToolExecutionPolicySuspendTests
 {
     private static readonly TimeSpan ShortBudget = TimeSpan.FromMilliseconds(150);
 

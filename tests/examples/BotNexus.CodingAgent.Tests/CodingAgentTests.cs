@@ -6,7 +6,7 @@ namespace BotNexus.CodingAgent.Tests;
 public sealed class CodingAgentTests
 {
     [Fact]
-    public async Task DefaultMessageConverter_FiltersSystemMessages()
+    public async Task DefaultProviderMessageTransformer_FiltersSystemMessages()
     {
         var convertToLlm = DefaultProviderMessageTransformer.Create();
 

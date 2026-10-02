@@ -21,7 +21,7 @@ using AgentUserMessage = BotNexus.Agent.Core.Types.UserMessage;
 /// share one safe compaction boundary and the loop continues if the hook throws.
 /// </summary>
 [Collection(ApiProviderRegistryCollection.Name)]
-public class AgentLoopRunnerMaybeCompactTests
+public class AgentLoopRunnerContextCompactionTests
 {
     private sealed class ContextAwareTool : IAgentTool, IContextReplacementAwareTool
     {
@@ -67,7 +67,7 @@ public class AgentLoopRunnerMaybeCompactTests
     }
 
     [Fact]
-    public async Task RunAsync_InvokesMaybeCompact_AtLeastOncePerRun()
+    public async Task RunAsync_InvokesContextCompaction_AtLeastOncePerRun()
     {
         var compactCalls = 0;
         using var provider = RegisterProvider("maybe-compact-once", (_, _, _) =>
@@ -173,7 +173,7 @@ public class AgentLoopRunnerMaybeCompactTests
     }
 
     [Fact]
-    public async Task RunAsync_WhenMaybeCompactReturnsContext_NotifiesContextAwareToolsOnce()
+    public async Task RunAsync_WhenContextCompactionReturnsContext_NotifiesContextAwareToolsOnce()
     {
         var tool = new ContextAwareTool();
         using var provider = RegisterProvider("maybe-compact-tool-notification", (_, _, _) =>
@@ -194,7 +194,7 @@ public class AgentLoopRunnerMaybeCompactTests
     }
 
     [Fact]
-    public async Task RunAsync_WhenMaybeCompactReturnsContext_UsesRefreshedSnapshotForNextProviderTurn()
+    public async Task RunAsync_WhenContextCompactionReturnsContext_UsesRefreshedSnapshotForNextProviderTurn()
     {
         Context? observed = null;
         using var provider = RegisterProvider("maybe-compact-refresh", (_, context, _) =>
@@ -224,7 +224,7 @@ public class AgentLoopRunnerMaybeCompactTests
     }
 
     [Fact]
-    public async Task RunAsync_WhenMaybeCompactThrows_DiagnosesAndContinues()
+    public async Task RunAsync_WhenContextCompactionThrows_DiagnosesAndContinues()
     {
         using var provider = RegisterProvider("maybe-compact-throws", (_, _, _) =>
             TestStreamFactory.CreateTextResponse("survived"));
@@ -313,7 +313,7 @@ public class AgentLoopRunnerMaybeCompactTests
     }
 
     [Fact]
-    public async Task RunAsync_WhenMaybeCompactIsCancelled_PropagatesCancellation()
+    public async Task RunAsync_WhenContextCompactionIsCancelled_PropagatesCancellation()
     {
         using var provider = RegisterProvider("maybe-compact-cancelled", (_, _, _) =>
             TestStreamFactory.CreateTextResponse("must not run"));

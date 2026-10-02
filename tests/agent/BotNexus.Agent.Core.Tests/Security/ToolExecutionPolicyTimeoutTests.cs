@@ -17,7 +17,7 @@ namespace BotNexus.Agent.Core.Tests.Security;
 /// never executed). These tests assert the observable outcome — whether the tool actually ran
 /// and what result the loop produced — not merely that a timeout token fired.
 /// </summary>
-public sealed class BeforeToolCallTimeoutTests
+public sealed class ToolExecutionPolicyTimeoutTests
 {
     private static readonly TimeSpan ShortBudget = TimeSpan.FromMilliseconds(150);
 

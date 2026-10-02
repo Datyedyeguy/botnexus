@@ -21,7 +21,7 @@ namespace BotNexus.Agent.Core.Tests.Security;
 /// These tests assert the observable outcome (did the tool body actually run?) rather than the
 /// shape of the returned record, so they remain meaningful if the representation changes.
 /// </summary>
-public sealed class BeforeToolCallAmbiguityTests
+public sealed class ToolExecutionPolicyAmbiguityTests
 {
     /// <summary>
     /// The whole point of the issue: an indeterminate verdict blocks, and the tool never runs.
