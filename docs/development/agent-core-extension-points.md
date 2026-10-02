@@ -59,10 +59,90 @@ Use these names:
 - Default implementation: `Default<Decision>Policy`.
 - Composition: `Composite<Decision>Policy` with a documented ordering and
   conflict rule.
+- Contributing rule interface: `I<Decision>Rule`, such as `IToolExecutionRule`.
+- Rule implementation: `<Concern><Decision>Rule`, such as
+  `AccessToolExecutionRule`.
+- Rule result: `<Decision>RuleResult` when individual contributions differ from
+  the final decision, such as when a rule can abstain.
 
 There must be one authoritative result at each decision point. If several rules
 contribute, a composite policy resolves them deterministically. Do not publish a
 mutable event and let subscribers compete to set the decision.
+
+### Reuse policy points, extend their rules
+
+A **policy point** is a named question at a specific boundary in the flow, such
+as whether a proposed tool call may execute. It has one context contract, one
+final decision contract, and one policy invoked by the loop.
+
+When several checks answer that same question, the host assembles an ordered
+collection of rules behind a composite policy. Each rule evaluates the same
+read-only context; the composite produces the final decision. Registration order
+must be explicit and stable, not an incidental result of service discovery.
+
+For example, the proposed tool-execution composition is:
+
+```text
+Tool execution policy point
+  -> CompositeToolExecutionPolicy
+       -> SafetyToolExecutionRule
+       -> AccessToolExecutionRule
+       -> ApprovalToolExecutionRule
+       -> BudgetToolExecutionRule
+  -> One ToolExecutionDecision applied by the loop
+```
+
+These names describe the target design, not currently available registration
+APIs. Adding another tool-execution check should require one rule and its host
+registration, not another `AgentOptions` property, loop branch, policy interface,
+or copy of the existing composite. A rule implements only its policy point's
+contract; it must not implement unrelated policy methods with placeholder
+responses. Do not create pass-through policies or adapters merely to insert a
+check into the chain.
+
+Reuse an existing point when its question, context, and decision vocabulary fit.
+Introduce a new point only when the loop must delegate a genuinely different
+decision or evaluate at a different boundary. Do not pre-create unused points.
+
+### Define composition per policy family
+
+Composition is not a universal "first result wins" algorithm. Each family must
+document these rules before accepting additional contributors:
+
+| Contract | Required definition |
+| --- | --- |
+| Ordering | Stable rule order and whether evaluation is sequential or parallel |
+| Aggregation | Outcome precedence, conflict resolution, and whether a rule may abstain |
+| Defaults | Empty-chain behavior, all-abstain behavior, and which checks are mandatory |
+| Short-circuiting | Which outcomes may stop evaluation and which checks must still run |
+| Failure | Cancellation propagation, total/per-rule budgets, and exception or timeout outcomes |
+| Evidence | Stable rule identifiers, contributing reasons, and skipped/failed checks |
+
+For tool authorization, an early allow must never bypass later restrictions.
+Denial prevents execution; required approval cannot be satisfied by another rule
+returning allow; an indeterminate mandatory check blocks execution. Abstention
+does not establish permission. The family must explicitly define whether a chain
+with no applicable checks permits execution, and how mandatory checks are
+validated at composition time. Reasons for denial, pending approval, and failed
+evaluation must remain distinguishable even when all prevent execution.
+
+For completion, every required check must establish completion before the
+composite returns completed. The family defines how continuation requests and
+supported parked dispositions combine, including incompatible dispositions.
+For recovery, a first-applicable strategy is appropriate only after mandatory
+safety checks and retry limits have been satisfied. Limits enforced by the loop
+remain authoritative regardless of policy results.
+
+Short-circuit only when remaining checks cannot change the final decision and
+are not required for evidence collection. Required durable audit work stays in
+a service with explicit sequencing; it must not depend on a rule being reached.
+Rules must not execute a tool or initiate a recovery action themselves. The loop
+applies the final decision, then publishes the resulting lifecycle facts.
+
+Test ordering, conflicting results, allow followed by deny, abstention, empty
+chains, missing mandatory checks, safe short-circuiting, cancellation, timeouts,
+exceptions, and preservation of contributing reasons. Transformer composition is
+different: each output becomes the next input rather than an aggregated vote.
 
 ## Transformers
 
@@ -145,6 +225,8 @@ Before adding a property to `AgentOptions` or `AgentLoopConfig`:
 
 1. Write the question or fact represented by the extension point.
 2. Select one category from this reference.
+  For policies, reuse an existing policy point and add a rule when its contract
+  fits; do not add a new extension point solely for another check.
 3. Define a narrow immutable context instead of exposing the mutable agent.
 4. Define a typed decision or output when a value is returned.
 5. Specify cardinality, ordering, cancellation, timeout, exception, and default
