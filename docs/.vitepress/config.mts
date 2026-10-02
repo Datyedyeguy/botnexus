@@ -6,6 +6,11 @@ export default defineConfig({
   description: 'A modular AI agent execution platform',
   base: '/botnexus/',
 
+  markdown: {
+    // Documentation uses pwsh for cross-platform PowerShell examples.
+    languageAlias: { pwsh: 'powershell' },
+  },
+
   // Ignore dead links to source files and localhost URLs (expected in docs)
   ignoreDeadLinks: [
     // Source code links (referenced in dev docs but not part of docs build)
