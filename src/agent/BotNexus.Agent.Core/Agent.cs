@@ -62,12 +62,14 @@ public sealed class Agent
         var initial = options.InitialState;
         _state = new AgentState
         {
+
             SystemPrompt = initial?.SystemPrompt,
             Model = initial?.Model ?? options.Model,
-            ThinkingLevel = initial?.ThinkingLevel
+            ThinkingLevel = initial?.ThinkingLevel,
+            Tools = initial?.Tools ?? [],
+            Messages = initial?.Messages ?? []
+
         };
-        _state.Tools = initial?.Tools ?? [];
-        _state.Messages = initial?.Messages ?? [];
 
         _steeringQueue = new PendingMessageQueue(options.SteeringMode);
         _followUpQueue = new PendingMessageQueue(options.FollowUpMode)
