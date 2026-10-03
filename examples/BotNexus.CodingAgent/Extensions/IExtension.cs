@@ -1,4 +1,5 @@
-using BotNexus.Agent.Core.Hooks;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Tools;
 using BotNexus.CodingAgent.Session;
 using BotNexus.Agent.Providers.Core.Models;

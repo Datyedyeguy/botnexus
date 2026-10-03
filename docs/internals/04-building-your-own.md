@@ -265,7 +265,9 @@ public sealed class WeatherTool : IAgentTool
 ```csharp
 using BotNexus.Agent.Core;
 using BotNexus.Agent.Core.Configuration;
-using BotNexus.Agent.Core.Hooks;
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Types;
 using BotNexus.Agent.Providers.Core;
 using BotNexus.Agent.Providers.Core.Models;
@@ -1410,7 +1412,9 @@ ToolExecutionPolicy safetyHook = async (context, ct) =>
 ```csharp
 using BotNexus.Agent.Core;
 using BotNexus.Agent.Core.Configuration;
-using BotNexus.Agent.Core.Hooks;
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Loop;
 using BotNexus.Agent.Core.Tools;
 using BotNexus.Agent.Core.Types;

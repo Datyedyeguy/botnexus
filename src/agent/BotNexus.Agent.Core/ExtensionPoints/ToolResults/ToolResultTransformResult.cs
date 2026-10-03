@@ -1,6 +1,6 @@
 using BotNexus.Agent.Core.Types;
 
-namespace BotNexus.Agent.Core.Hooks;
+namespace BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 
 /// <summary>
 /// Defines the override result returned from tool result transformation.

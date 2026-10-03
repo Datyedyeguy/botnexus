@@ -1,4 +1,6 @@
 using BotNexus.Agent.Core.Configuration;
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
+using BotNexus.Agent.Core.ExtensionPoints.RunCompletion;
 using BotNexus.Agent.Core.Loop;
 using BotNexus.Agent.Core.Tests.TestUtils;
 using BotNexus.Agent.Core.Types;

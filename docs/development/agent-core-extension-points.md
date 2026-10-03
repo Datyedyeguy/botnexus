@@ -6,6 +6,33 @@ authority it has over agent execution. The convention applies to new APIs and to
 existing APIs when they are deliberately refactored; the current API does not yet
 use every name in this reference.
 
+## Current organization
+
+Public extension contracts live in `src/agent/BotNexus.Agent.Core/ExtensionPoints/`.
+Each independently consumed delegate, context, decision, result, or enum has a
+matching file. Its namespace is `BotNexus.Agent.Core.ExtensionPoints.<Family>`.
+
+| Family directory | Current contracts and implementations |
+| --- | --- |
+| `Messages/` | `ProviderMessageTransformer`, `AgentContextTransformer`, `AgentMessageProvider`, `DefaultProviderMessageTransformer` |
+| `ProviderExecution/` | `ProviderExecutionOptionsProvider`, `CredentialInvalidationService` |
+| `ToolExecution/` | `ToolExecutionPolicy`, `ToolAuditGate`, `ToolExecutionDecisionObserver`, `ToolExecutionContext`, `ToolExecutionDecision` |
+| `ToolResults/` | `ToolResultTransformer`, `ToolResultTransformContext`, `ToolResultTransformResult` |
+| `RunCompletion/` | `RunCompletionPolicy`, `RunCompletionDecision`, `RunCompletionResult`, `RunCompletionStatus`, `RunStopReason` |
+
+`Configuration/` owns configuration records, not a shared delegate collection.
+`Loop/` owns orchestration and applies extension decisions. Existing resilience
+contracts, including recovery, suspension, and host active-time services, remain
+in `Loop/`; this layout batch does not move or redesign them. There is no core
+`Hooks/` bucket. Gateway hook contracts and example hook implementations are
+separate and keep their existing organization.
+
+This is a path and namespace change only. Named delegates retain their signatures,
+and records retain positional parameter order, defaults, and null semantics.
+Imports must use the new family namespaces; other `Loop` types do not move.
+The default message-transformer unit tests mirror `ExtensionPoints/Messages/`;
+cross-cutting security tests remain in `Security/`.
+
 ## Choose the category
 
 Classify an extension point by its contract, not by where in the loop it runs.

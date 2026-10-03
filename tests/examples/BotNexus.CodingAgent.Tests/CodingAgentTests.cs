@@ -1,4 +1,4 @@
-using BotNexus.Agent.Core.Configuration;
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
 using BotNexus.Agent.Core.Types;
 
 namespace BotNexus.CodingAgent.Tests;

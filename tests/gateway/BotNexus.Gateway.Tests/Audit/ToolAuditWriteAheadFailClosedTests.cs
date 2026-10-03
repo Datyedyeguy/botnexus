@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using BotNexus.Agent.Core.Configuration;
-using BotNexus.Agent.Core.Hooks;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
 using BotNexus.Agent.Core.Tools;
 using BotNexus.Agent.Core.Types;
 using BotNexus.Agent.Providers.Core.Models;

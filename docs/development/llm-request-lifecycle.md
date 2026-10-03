@@ -130,7 +130,7 @@ Each iteration of this loop is a separate stateless HTTP call to the provider. A
 |-------------------------------|-----------------------------------------------------------------------------------------|
 | `AgentLoopRunner.cs`          | Core turn loop — drain steering → call LLM → execute tools → repeat                    |
 | `ContextConverter.cs`         | Transforms `AgentContext` (agent messages) into provider `Context` (provider messages + tools) |
-| `DefaultProviderMessageTransformer.cs` | Default transformation from `AgentMessage[]` to provider `Message[]`                |
+| `ExtensionPoints/Messages/DefaultProviderMessageTransformer.cs` | Default transformation from `AgentMessage[]` to provider `Message[]`                |
 | `LlmClient.cs`               | Resolves API provider from registry and delegates streaming call                        |
 | `StreamAccumulator.cs`        | Collects SSE stream chunks into a complete `AssistantMessage`                           |
 | `AnthropicRequestBuilder.cs`  | Builds the JSON body for Anthropic Messages API                                         |

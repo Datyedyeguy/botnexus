@@ -6,7 +6,10 @@ using BotNexus.Agent.Core.Tools;
 using BotNexus.Agent.Core;
 using BotNexus.Agent.Core.Configuration;
 using BotNexus.Agent.Core.Diagnostics;
-using BotNexus.Agent.Core.Hooks;
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
+using BotNexus.Agent.Core.ExtensionPoints.RunCompletion;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Loop;
 using BotNexus.Agent.Core.Types;
 using BotNexus.Agent.Providers.Core.Resolution;
@@ -377,7 +380,7 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
                     ctx.ValidatedArgs);
                 if (classificationPrompt is not null)
                 {
-                    return new BotNexus.Agent.Core.Hooks.ToolExecutionDecision(
+                    return new BotNexus.Agent.Core.ExtensionPoints.ToolExecution.ToolExecutionDecision(
                         Block: true,
                         Reason: classificationPrompt);
                 }
@@ -431,7 +434,7 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
                 var denied = results.FirstOrDefault(r => r.Denied);
                 if (denied is not null)
                 {
-                    return new BotNexus.Agent.Core.Hooks.ToolExecutionDecision(
+                    return new BotNexus.Agent.Core.ExtensionPoints.ToolExecution.ToolExecutionDecision(
                         Block: true,
                         Reason: denied.DenyReason);
                 }
@@ -676,7 +679,7 @@ public sealed class InProcessIsolationStrategy : IIsolationStrategy
             _logger.LogDebug(ex, "Could not resolve auth profile id for provider '{Provider}'.", model.Provider);
         }
 
-        BotNexus.Agent.Core.Loop.RunCompletionPolicy? evaluateRunCompletion = null;
+        BotNexus.Agent.Core.ExtensionPoints.RunCompletion.RunCompletionPolicy? evaluateRunCompletion = null;
         var completionConversationStore = _serviceProvider.GetService<IConversationStore>();
         var completionConversationId = completionConversationStore is null
             ? null

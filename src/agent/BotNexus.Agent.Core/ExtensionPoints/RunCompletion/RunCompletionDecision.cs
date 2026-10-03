@@ -1,6 +1,4 @@
-using BotNexus.Agent.Core.Types;
-
-namespace BotNexus.Agent.Core.Loop;
+namespace BotNexus.Agent.Core.ExtensionPoints.RunCompletion;
 
 /// <summary>
 /// Host evaluation performed when the model would otherwise end a run normally.
@@ -44,46 +42,3 @@ public sealed record RunCompletionDecision(
             wakeCondition);
     }
 }
-
-/// <summary>
-/// Authoritative terminal classification emitted with the run-end event.
-/// </summary>
-public sealed record RunCompletionResult(
-    RunCompletionStatus Status,
-    IReadOnlyList<string> OpenItemIds,
-    RunStopReason? StopReason = null,
-    string? Detail = null,
-    string? Evidence = null,
-    string? ContinuationOwner = null,
-    string? WakeCondition = null,
-    int ContinuationAttempts = 0)
-{
-    public static RunCompletionResult Completed { get; } =
-        new(RunCompletionStatus.Completed, []);
-}
-
-public enum RunCompletionStatus
-{
-    Working,
-    Parked,
-    IncompleteWithoutStopReason,
-    Completed,
-    Failed,
-    Cancelled,
-}
-
-/// <summary>
-/// Bounded reasons for legitimately ending a run while actionable checklist items remain.
-/// Free text is supporting detail, never the reason itself.
-/// </summary>
-public enum RunStopReason
-{
-    UserInput,
-    Approval,
-    ExternalBlocker,
-    Cancellation,
-    SafetyBoundary,
-    DurableAsyncWait,
-}
-
-public delegate Task<RunCompletionDecision> RunCompletionPolicy(CancellationToken cancellationToken);

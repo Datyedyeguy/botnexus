@@ -1,3 +1,8 @@
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
+using BotNexus.Agent.Core.ExtensionPoints.ProviderExecution;
+using BotNexus.Agent.Core.ExtensionPoints.RunCompletion;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Types;
 using BotNexus.Agent.Providers.Core;
 using BotNexus.Agent.Providers.Core.Models;
@@ -99,7 +104,7 @@ public record AgentOptions(
     ToolAuditGate? ToolAuditGate = null,
     ToolExecutionDecisionObserver? ToolExecutionDecisionObserver = null,
     Func<string, string>? ToolResultTextTransformer = null,
-    Loop.RunCompletionPolicy? RunCompletionPolicy = null,
+    RunCompletionPolicy? RunCompletionPolicy = null,
     int MaxCompletionContinuations = 2,
     CredentialInvalidationService? CredentialInvalidationService = null,
     Loop.IProviderRecoveryCoordinator? RecoveryCoordinator = null,

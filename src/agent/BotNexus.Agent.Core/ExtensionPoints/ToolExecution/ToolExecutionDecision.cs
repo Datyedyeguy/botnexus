@@ -1,4 +1,4 @@
-namespace BotNexus.Agent.Core.Hooks;
+namespace BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
 
 /// <summary>
 /// Defines the outcome of tool execution policy evaluation.

@@ -1,7 +1,9 @@
 using System.Text.Json;
 using BotNexus.Agent.Core;
 using BotNexus.Agent.Core.Configuration;
-using BotNexus.Agent.Core.Hooks;
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Tools;
 using BotNexus.Agent.Core.Types;
 using BotNexus.CodingAgent.Auth;

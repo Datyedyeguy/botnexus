@@ -1,6 +1,6 @@
 using BotNexus.Agent.Core.Configuration;
 using BotNexus.Agent.Core.Loop;
-using BotNexus.Agent.Core.Hooks;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Tests.TestUtils;
 using BotNexus.Agent.Core.Tools;
 using BotNexus.Agent.Core.Types;

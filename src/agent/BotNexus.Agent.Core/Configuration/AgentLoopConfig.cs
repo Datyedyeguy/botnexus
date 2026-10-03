@@ -1,4 +1,9 @@
 using BotNexus.Agent.Core.Diagnostics;
+using BotNexus.Agent.Core.ExtensionPoints.Messages;
+using BotNexus.Agent.Core.ExtensionPoints.ProviderExecution;
+using BotNexus.Agent.Core.ExtensionPoints.RunCompletion;
+using BotNexus.Agent.Core.ExtensionPoints.ToolExecution;
+using BotNexus.Agent.Core.ExtensionPoints.ToolResults;
 using BotNexus.Agent.Core.Loop;
 using BotNexus.Agent.Core.Types;
 using BotNexus.Agent.Providers.Core;

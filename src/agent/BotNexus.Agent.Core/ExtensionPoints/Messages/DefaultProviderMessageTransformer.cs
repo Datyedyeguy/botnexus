@@ -1,7 +1,7 @@
 using BotNexus.Agent.Core.Types;
 using BotNexus.Agent.Providers.Core.Models;
 
-namespace BotNexus.Agent.Core.Configuration;
+namespace BotNexus.Agent.Core.ExtensionPoints.Messages;
 
 using AgentUserMessage = BotNexus.Agent.Core.Types.UserMessage;
 using ProviderUserMessage = BotNexus.Agent.Providers.Core.Models.UserMessage;
