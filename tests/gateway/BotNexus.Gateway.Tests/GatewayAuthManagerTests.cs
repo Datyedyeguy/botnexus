@@ -32,13 +32,19 @@ public sealed class GatewayAuthManagerTests : IDisposable
     public async Task GetCopilotMcpOAuthTokenAsync_SeparatesSearchFromInference(string provider)
     {
         const string authJson = """
-            {"github-copilot":{"type":"oauth","access":"fake-session","refresh":"fake-oauth","expires":4102444800000}}
+            {"github-copilot":{"type":"oauth","access":"fake-session","refresh":"fake-oauth","expires":4102444800000,"endpoint":"https://api.githubcopilot.com"}}
             """;
         await _fileSystem.File.WriteAllTextAsync(_authFilePath, authJson);
-        var manager = CreateManager(new PlatformConfig());
+        var refreshCalls = 0;
+        var manager = CreateManager(new PlatformConfig(), refreshEntry: (_, _) =>
+        {
+            refreshCalls++;
+            throw new InvalidOperationException("A valid exchanged session must not refresh in this separation test.");
+        });
 
         (await manager.GetCopilotMcpOAuthTokenAsync(provider)).ShouldBe("fake-oauth");
         (await manager.GetApiKeyAsync(provider)).ShouldBe("fake-session");
+        refreshCalls.ShouldBe(0);
         (await _fileSystem.File.ReadAllTextAsync(_authFilePath)).ShouldBe(authJson);
     }
 
