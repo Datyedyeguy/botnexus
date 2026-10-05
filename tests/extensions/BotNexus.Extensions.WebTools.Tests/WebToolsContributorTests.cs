@@ -183,6 +183,55 @@ public class WebToolsContributorTests
         GetRedactor(contribution.Tools.OfType<WebFetchTool>().First()).ShouldBeNull();
     }
 
+    [Fact]
+    public async Task ContributeAsync_CopilotSearchUsesOAuthResolverForExactProviderInstance()
+    {
+        var original = BuildContext(searchProvider: "copilot",
+            copilotMcpEndpoint: "https://api.enterprise.githubcopilot.com/mcp");
+        var context = original with
+        {
+            Descriptor = original.Descriptor with { ApiProvider = "copilot-work" },
+            GetProviderApiKeyAsync = (_, _) => throw new InvalidOperationException("Inference resolver must not back search."),
+            GetCopilotMcpOAuthTokenAsync = (provider, ct) =>
+            {
+                provider.ShouldBe("copilot-work");
+                ct.ShouldBe(CancellationToken.None);
+                return Task.FromResult<string?>("fake-oauth");
+            }
+        };
+        var contribution = await new WebToolsContributor().ContributeAsync(context);
+        await using var search = contribution.Tools.OfType<WebSearchTool>().ShouldHaveSingleItem();
+        var resolver = GetCopilotResolver(search);
+
+        (await resolver(CancellationToken.None)).ShouldBe("fake-oauth");
+        GetCopilotEndpoint(search).ShouldBe(original.CopilotMcpEndpoint);
+    }
+
+    [Fact]
+    public async Task ContributeAsync_MissingOAuthResolverDoesNotFallBackToInference()
+    {
+        var context = BuildContext(searchProvider: "copilot") with
+        {
+            GetProviderApiKeyAsync = (_, _) => throw new InvalidOperationException("No inference fallback."),
+            GetCopilotMcpOAuthTokenAsync = null
+        };
+        var contribution = await new WebToolsContributor().ContributeAsync(context);
+        await using var search = contribution.Tools.OfType<WebSearchTool>().ShouldHaveSingleItem();
+
+        (await GetCopilotResolver(search)(CancellationToken.None)).ShouldBeNull();
+        var args = await search.PrepareArgumentsAsync(new Dictionary<string, object?> { ["query"] = "docs" });
+        var result = await search.ExecuteAsync("missing-oauth", args);
+        result.Content[0].Value.ShouldContain("Copilot token unavailable");
+    }
+
+    private static Func<CancellationToken, Task<string?>> GetCopilotResolver(WebSearchTool tool)
+    {
+        var field = typeof(WebSearchTool).GetField("_copilotApiKeyResolver", BindingFlags.Instance | BindingFlags.NonPublic)
+            ?? throw new InvalidOperationException("Missing Copilot resolver field.");
+        return field.GetValue(tool) as Func<CancellationToken, Task<string?>>
+            ?? throw new InvalidOperationException("Missing Copilot credential resolver.");
+    }
+
     private static AgentDescriptor BuildDescriptor(JsonElement? defaults = null, JsonElement? named = null)
         => new()
         {

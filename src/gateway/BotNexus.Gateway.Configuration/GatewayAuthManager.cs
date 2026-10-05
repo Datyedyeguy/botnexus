@@ -235,6 +235,48 @@ public sealed class GatewayAuthManager
     }
 
     /// <summary>
+    /// Resolves the retained GitHub OAuth credential for Copilot MCP web search, not the
+    /// exchanged Copilot session credential used by model inference. Uses the same direct-entry
+    /// precedence and auth: profile routing as endpoint/inference resolution. Returns null when
+    /// the instance is not in the Copilot provider family, or the selected OAuth profile or its
+    /// retained credential is missing; never exchanges a token,
+    /// writes auth state, or falls back to configured/ambient inference credentials.
+    /// </summary>
+    public Task<string?> GetCopilotMcpOAuthTokenAsync(string provider, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(provider))
+            return Task.FromResult<string?>(null);
+
+        ProviderConfig? config = null;
+        if (_platformConfig.CurrentValue.Providers is { } providers)
+            TryGetProviderConfig(providers, provider, out config);
+
+        // An explicit instance type is authoritative, even for a legacy Copilot key.
+        // Never forward another provider family's OAuth credential to the Copilot endpoint.
+        var providerType = string.IsNullOrWhiteSpace(config?.Type) ? provider : config.Type;
+        if (!string.Equals(providerType, "github-copilot", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(providerType, "copilot", StringComparison.OrdinalIgnoreCase))
+            return Task.FromResult<string?>(null);
+
+        LoadAuthEntries();
+        if (!TryGetAuthEntry(provider, out var entry))
+        {
+            const string AuthPrefix = "auth:";
+            if (config?.ApiKey?.StartsWith(AuthPrefix, StringComparison.OrdinalIgnoreCase) != true)
+                return Task.FromResult<string?>(null);
+
+            var referenceProvider = config.ApiKey[AuthPrefix.Length..].Trim();
+            if (string.IsNullOrWhiteSpace(referenceProvider) || !TryGetAuthEntry(referenceProvider, out entry))
+                return Task.FromResult<string?>(null);
+        }
+
+        return Task.FromResult<string?>(
+            string.Equals(entry.Type, "oauth", StringComparison.OrdinalIgnoreCase) &&
+            !string.IsNullOrWhiteSpace(entry.Refresh) ? entry.Refresh : null);
+    }
+
+    /// <summary>
     /// Creates the provider-owned execution policy used by foreground and background LLM calls.
     /// The resolved credential and configured stream-idle timeout are applied without overwriting
     /// explicit base options. A blank credential sentinel is preserved to suppress ambient fallback.

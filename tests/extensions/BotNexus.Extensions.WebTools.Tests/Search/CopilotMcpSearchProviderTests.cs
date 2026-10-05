@@ -69,6 +69,97 @@ public class CopilotMcpSearchProviderTests
     }
 
     [Fact]
+    public async Task SearchAsync_OAuthCredentialAndGet405_InitializesAndSearchesViaPost()
+    {
+        var handler = new MockHttpMessageHandler();
+        var methods = new List<string>();
+        handler.SetResponder(async (request, ct) =>
+        {
+            request.RequestUri.ShouldBe(new Uri("https://api.enterprise.githubcopilot.com/mcp"));
+            request.Headers.Authorization?.Scheme.ShouldBe("Bearer");
+            request.Headers.Authorization?.Parameter.ShouldBe("fake-github-oauth");
+            if (request.Method == HttpMethod.Get)
+            {
+                methods.Add("GET");
+                return new HttpResponseMessage(System.Net.HttpStatusCode.MethodNotAllowed);
+            }
+            request.Method.ShouldBe(HttpMethod.Post);
+            var content = request.Content ?? throw new InvalidOperationException("Missing JSON-RPC request.");
+            using var doc = JsonDocument.Parse(await content.ReadAsStringAsync(ct));
+            var root = doc.RootElement;
+            var method = root.GetProperty("method").GetString() ?? throw new InvalidOperationException("Missing method.");
+            methods.Add(method);
+            if (method == "notifications/initialized")
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Accepted);
+            object result;
+            if (method == "initialize")
+            {
+                result = new
+                {
+                    protocolVersion = "2024-11-05",
+                    capabilities = new { tools = new { listChanged = false } },
+                    serverInfo = new { name = "copilot", version = "1.0" }
+                };
+            }
+            else
+            {
+                method.ShouldBe("tools/call");
+                root.GetProperty("params").GetProperty("name").GetString().ShouldBe("web_search");
+                result = new
+                {
+                    content = new[] { new { type = "text", text = "[Official docs](https://example.com/docs)" } },
+                    isError = false
+                };
+            }
+            return new HttpResponseMessage(System.Net.HttpStatusCode.OK)
+            {
+                Content = new StringContent(JsonSerializer.Serialize(new
+                {
+                    jsonrpc = "2.0", id = root.GetProperty("id").Clone(), result
+                }), System.Text.Encoding.UTF8, "application/json")
+            };
+        });
+        using var http = new HttpClient(handler);
+        await using var provider = new CopilotMcpSearchProvider(
+            _ => Task.FromResult<string?>("fake-github-oauth"), http,
+            "https://api.enterprise.githubcopilot.com/mcp");
+
+        var results = await provider.SearchAsync("docs", 5, CancellationToken.None);
+
+        results.ShouldHaveSingleItem().Title.ShouldBe("Official docs");
+        methods.ShouldBe(new[] { "GET", "initialize", "notifications/initialized", "tools/call" });
+    }
+
+    [Fact]
+    public async Task SearchAsync_Get400IsNotAcceptedAsSuccessfulConnection()
+    {
+        var handler = new MockHttpMessageHandler();
+        handler.EnqueueResponse(System.Net.HttpStatusCode.BadRequest, "Authorization header is badly formatted.");
+        using var http = new HttpClient(handler);
+        await using var provider = new CopilotMcpSearchProvider(
+            _ => Task.FromResult<string?>("fake-session"), http);
+
+        var ex = await Should.ThrowAsync<HttpRequestException>(async () =>
+            await provider.SearchAsync("docs", 5, CancellationToken.None));
+
+        ex.StatusCode.ShouldBe(System.Net.HttpStatusCode.BadRequest);
+        handler.Requests.ShouldHaveSingleItem().Method.ShouldBe(HttpMethod.Get);
+    }
+
+    [Fact]
+    public async Task SearchAsync_MissingOAuthCredentialMakesNoHttpRequests()
+    {
+        var handler = new MockHttpMessageHandler();
+        using var http = new HttpClient(handler);
+        await using var provider = new CopilotMcpSearchProvider(_ => Task.FromResult<string?>(null), http);
+
+        _ = await Should.ThrowAsync<InvalidOperationException>(async () =>
+            await provider.SearchAsync("docs", 5, CancellationToken.None));
+
+        handler.Requests.ShouldBeEmpty();
+    }
+
+    [Fact]
     public async Task SearchAsync_WhenJsonParsingFails_FallsBackToMarkdownLinks()
     {
         var provider = new CopilotMcpSearchProvider(

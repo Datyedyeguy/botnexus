@@ -81,14 +81,20 @@ public interface IAgentToolContributor
 /// consume a ready-to-use value instead of re-deriving it from a raw provider-endpoint override (#1797).
 /// <c>null</c> when the agent's provider has no Copilot MCP endpoint.
 /// </param>
-/// <param name="GetProviderApiKeyAsync">Resolves an API key for a provider key.</param>
+/// <param name="GetProviderApiKeyAsync">Resolves a model-inference API key for a provider key.</param>
+/// <param name="GetCopilotMcpOAuthTokenAsync">
+/// Resolves the retained GitHub OAuth credential for Copilot MCP using the exact provider-instance
+/// key. Null means the host has no search credential resolver; contributors must not substitute
+/// the model-inference credential. The resolver returns null when the selected credential is absent.
+/// </param>
 public sealed record AgentToolContributionContext(
     AgentDescriptor Descriptor,
     AgentExecutionContext ExecutionContext,
     string WorkspacePath,
     IPathValidator PathValidator,
     string? CopilotMcpEndpoint,
-    Func<string, CancellationToken, Task<string?>> GetProviderApiKeyAsync);
+    Func<string, CancellationToken, Task<string?>> GetProviderApiKeyAsync,
+    Func<string, CancellationToken, Task<string?>>? GetCopilotMcpOAuthTokenAsync = null);
 
 /// <summary>
 /// Result returned by an <see cref="IAgentToolContributor"/> containing tools and
